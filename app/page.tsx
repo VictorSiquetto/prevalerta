@@ -1,91 +1,34 @@
 "use client";
 
 import { useState } from "react";
-
-type Location = {
-  name: string;
-  state: string;
-  latitude: number;
-  longitude: number;
-};
-
-type HourlyForecast = {
-  time: string;
-  temperature: number;
-  precipitationProbability: number;
-  precipitation: number;
-  weatherCode: number;
-};
-
-type Weather = {
-  temperature: number;
-  humidity: number;
-  precipitation: number;
-  windSpeed: number;
-  windGusts: number;
-  weatherCode: number;
-  hourly: HourlyForecast[];
-};
+import { searchCity } from "@/services/geocoding";
+import { getWeather } from "@/services/weather";
+import type { Location } from "@/types/location";
+import type { Weather } from "@/types/weather";
+import WeatherCard from "@/components/WeatherCard";
+import HourlyForecastList from "@/components/HourlyForecastList";
 
 export default function Home() {
   const [city, setCity] = useState("");
   const [location, setLocation] = useState<Location | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
 
-  async function fetchWeather(latitude: number, longitude: number) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m,weather_code&hourly=temperature_2m,precipitation_probability,precipitation,weather_code&timezone=America%2FSao_Paulo&forecast_days=2`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    const hourly: HourlyForecast[] = data.hourly.time
-      .map((time: string, index: number) => ({
-        time,
-        temperature: data.hourly.temperature_2m[index],
-        precipitationProbability: data.hourly.precipitation_probability[index],
-        precipitation: data.hourly.precipitation[index],
-        weatherCode: data.hourly.weather_code[index],
-      }))
-      .filter((hour: HourlyForecast) => hour.time >= data.current.time)
-      .slice(0, 6);
-
-    setWeather({
-      temperature: data.current.temperature_2m,
-      humidity: data.current.relative_humidity_2m,
-      precipitation: data.current.precipitation,
-      windSpeed: data.current.wind_speed_10m,
-      windGusts: data.current.wind_gusts_10m,
-      weatherCode: data.current.weather_code,
-      hourly,
-    });
-  }
-
   async function handleSearch() {
     if (!city.trim()) return;
 
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-      city
-    )}&count=1&language=pt&format=json`;
+    const found = await searchCity(city);
 
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data.results || data.results.length === 0) {
+    if (!found) {
       console.log("Cidade não encontrada");
       setLocation(null);
       setWeather(null);
       return;
     }
 
-    const found = data.results[0];
-    setLocation({
-      name: found.name,
-      state: found.admin1,
-      latitude: found.latitude,
-      longitude: found.longitude,
-    });
+    setLocation(found);
 
-    await fetchWeather(found.latitude, found.longitude);
+    const weatherData = await getWeather(found.latitude, found.longitude);
+    setWeather(weatherData);
   }
 
   return (
@@ -114,35 +57,11 @@ export default function Home() {
           </button>
         </div>
 
-        {location && (
-          <div className="mt-8 text-left text-zinc-700 dark:text-zinc-300">
-            <p className="font-semibold">Cidade encontrada:</p>
-            <p>
-              {location.name} - {location.state}
-            </p>
-            <p>Latitude: {location.latitude}</p>
-            <p>Longitude: {location.longitude}</p>
-          </div>
-        )}
-
-        {weather && (
-          <div className="mt-4 text-left text-zinc-700 dark:text-zinc-300">
-            <p>Temperatura: {weather.temperature}°C</p>
-            <p>Umidade: {weather.humidity}%</p>
-            <p>Precipitação: {weather.precipitation} mm</p>
-            <p>Vento: {weather.windSpeed} km/h</p>
-            <p>Rajadas: {weather.windGusts} km/h</p>
-
-            <p className="mt-4 font-semibold">Próximas horas:</p>
-            <ul>
-              {weather.hourly.map((hour) => (
-                <li key={hour.time}>
-                  {hour.time.slice(11, 16)} — {hour.temperature}°C —{" "}
-                  {hour.precipitationProbability}%
-                </li>
-              ))}
-            </ul>
-          </div>
+        {location && weather && (
+          <>
+            <WeatherCard location={location} weather={weather} />
+            <HourlyForecastList hourly={weather.hourly} />
+          </>
         )}
       </main>
     </div>
