@@ -1,2 +1,12 @@
 # PreVAlerta
 
+Plataforma de monitoramento meteorológico e riscos do Estado de São Paulo.
+
+## Como rodar o projeto
+
+```bash
+npm install
+npm run dev
+```
+
+Abra [http://localhost:3000](http://localhost:3000) no navegador para ver o resultado.
