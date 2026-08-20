@@ -17,6 +17,13 @@ function extractTableValues(html: string): string[] {
   return matches.map((match) => match[1].trim());
 }
 
+function isExpired(endsAt: string): boolean {
+  // "2026-08-19 23:59:00.0" (sempre em UTC) -> "2026-08-19T23:59:00Z"
+  const isoString = `${endsAt.replace(" ", "T").replace(/\.\d+$/, "")}Z`;
+  const endDate = new Date(isoString);
+  return endDate.getTime() < Date.now();
+}
+
 function parseAreas(rawArea: string): string[] {
   const withoutPrefix = rawArea.replace(/^Aviso para as [ÁA]reas:\s*/i, "");
   return withoutPrefix
@@ -64,9 +71,11 @@ export async function GET(request: Request) {
       };
     });
 
+    const activeAlerts = alerts.filter((alert) => !isExpired(alert.endsAt));
+
     const spAlerts = mesoregion
-      ? alerts.filter((alert) => alert.areas.includes(mesoregion))
-      : alerts.filter((alert) =>
+      ? activeAlerts.filter((alert) => alert.areas.includes(mesoregion))
+      : activeAlerts.filter((alert) =>
           alert.areas.some(
             (area) => area.includes("Paulista") || area.includes("São Paulo")
           )
