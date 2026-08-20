@@ -23,7 +23,7 @@ export async function getWeather(
       isDay: data.hourly.is_day[index] === 1,
     }))
     .filter((hour: HourlyForecast) => hour.time >= data.current.time)
-    .slice(0, 6);
+    .slice(0, 24);
 
   return {
     temperature: data.current.temperature_2m,

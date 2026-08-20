@@ -21,7 +21,7 @@ export default function WeatherCard({ location, weather }: WeatherCardProps) {
   const risk = classifyRisk(weather);
 
   return (
-    <div className="mt-8 w-full rounded-2xl bg-white p-6 text-left shadow-md dark:bg-zinc-900">
+    <div className="w-full rounded-2xl bg-white p-6 text-left shadow-md dark:bg-zinc-900">
       <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
         {location.name} - {location.state}
       </p>
