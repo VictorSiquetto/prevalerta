@@ -2,6 +2,8 @@
 
 Plataforma de monitoramento meteorológico e riscos do Estado de São Paulo.
 
+🔗 Acesse: [prev-alerta.vercel.app](https://prev-alerta.vercel.app)
+
 ## Como rodar o projeto
 
 ```bash

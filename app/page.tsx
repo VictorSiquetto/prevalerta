@@ -3,15 +3,21 @@
 import { useRef, useState } from "react";
 import { searchCity } from "@/services/geocoding";
 import { getWeather } from "@/services/weather";
+import { getAlerts, type AlertsResult } from "@/services/alerts";
 import type { Location } from "@/types/location";
 import type { Weather } from "@/types/weather";
 import WeatherCard from "@/components/WeatherCard";
 import HourlyForecastList from "@/components/HourlyForecastList";
+import AlertsList from "@/components/AlertsList";
 
 export default function Home() {
   const [city, setCity] = useState("");
   const [location, setLocation] = useState<Location | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
+  const [alertsResult, setAlertsResult] = useState<AlertsResult>({
+    alerts: [],
+    mesoregion: null,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = useRef(false);
@@ -33,6 +39,7 @@ export default function Home() {
       if (!found) {
         setLocation(null);
         setWeather(null);
+        setAlertsResult({ alerts: [], mesoregion: null });
         setError(
           "Não conseguimos encontrar essa cidade. Verifique o nome e tente novamente."
         );
@@ -42,6 +49,7 @@ export default function Home() {
       if (found.state !== "São Paulo") {
         setLocation(null);
         setWeather(null);
+        setAlertsResult({ alerts: [], mesoregion: null });
         setError(
           "No momento, este aplicativo cobre apenas cidades do Estado de São Paulo."
         );
@@ -50,12 +58,17 @@ export default function Home() {
 
       setLocation(found);
 
-      const weatherData = await getWeather(found.latitude, found.longitude);
+      const [weatherData, alertsData] = await Promise.all([
+        getWeather(found.latitude, found.longitude),
+        getAlerts(found.name),
+      ]);
       setWeather(weatherData);
+      setAlertsResult(alertsData);
     } catch (caughtError) {
       console.error("Falha ao buscar dados meteorológicos:", caughtError);
       setLocation(null);
       setWeather(null);
+      setAlertsResult({ alerts: [], mesoregion: null });
       setError(
         "Não foi possível obter os dados meteorológicos. Tente novamente."
       );
@@ -108,6 +121,10 @@ export default function Home() {
           <>
             <WeatherCard location={location} weather={weather} />
             <HourlyForecastList hourly={weather.hourly} />
+            <AlertsList
+              alerts={alertsResult.alerts}
+              mesoregion={alertsResult.mesoregion}
+            />
           </>
         )}
       </main>
