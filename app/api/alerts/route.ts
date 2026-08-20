@@ -41,12 +41,16 @@ export async function GET(request: Request) {
 
     const alerts = items.map((item) => {
       const guid = extractTag(item, "guid");
-      const link = extractTag(item, "link");
       const descriptionHtml = extractCData(extractTag(item, "description"));
       const values = extractTableValues(descriptionHtml);
 
       const [, event, severity, startsAt, endsAt, description, rawArea] =
         values;
+
+      // O guid termina em ".../rss/{id}" — usamos esse id para montar o
+      // link da página visual do aviso (avisos.inmet.gov.br), em vez do
+      // link técnico em XML puro.
+      const alertId = guid.split("/").pop() ?? "";
 
       return {
         id: guid,
@@ -56,7 +60,7 @@ export async function GET(request: Request) {
         endsAt: endsAt ?? "",
         description: description ?? "",
         areas: parseAreas(rawArea ?? ""),
-        link,
+        link: `https://avisos.inmet.gov.br/${alertId}`,
       };
     });
 
