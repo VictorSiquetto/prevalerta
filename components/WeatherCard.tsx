@@ -1,10 +1,12 @@
 import type { Location } from "@/types/location";
 import type { Weather } from "@/types/weather";
+import type { WeatherAlert } from "@/types/alert";
 import { classifyRisk, type RiskLevel } from "@/lib/riskClassification";
 
 type WeatherCardProps = {
   location: Location;
   weather: Weather;
+  alerts: WeatherAlert[];
 };
 
 const riskStyles: Record<RiskLevel, string> = {
@@ -17,8 +19,12 @@ const riskStyles: Record<RiskLevel, string> = {
   critico: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
 };
 
-export default function WeatherCard({ location, weather }: WeatherCardProps) {
-  const risk = classifyRisk(weather);
+export default function WeatherCard({
+  location,
+  weather,
+  alerts,
+}: WeatherCardProps) {
+  const risk = classifyRisk(weather, alerts);
 
   return (
     <div className="w-full rounded-2xl bg-white p-6 text-left shadow-md dark:bg-zinc-900">
@@ -48,9 +54,10 @@ export default function WeatherCard({ location, weather }: WeatherCardProps) {
         <span>{risk.label}</span>
       </div>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        Classificação calculada pelo aplicativo com base nos dados
-        meteorológicos disponíveis. Não substitui alertas oficiais da Defesa
-        Civil.
+        {risk.source === "alert"
+          ? "Nível elevado por um alerta oficial do INMET em vigor para a região."
+          : "Classificação calculada pelo aplicativo com base nos dados meteorológicos disponíveis."}{" "}
+        Não substitui alertas oficiais da Defesa Civil.
       </p>
     </div>
   );

@@ -1,4 +1,5 @@
 import type { WeatherAlert } from "@/types/alert";
+import { formatAlertTime, hasAlertStarted } from "@/lib/formatAlertTime";
 
 type AlertsListProps = {
   alerts: WeatherAlert[];
@@ -40,6 +41,16 @@ export default function AlertsList({ alerts, mesoregion }: AlertsListProps) {
             >
               {alert.event} — {alert.severity}
             </span>
+            <p className="mt-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              {hasAlertStarted(alert.startsAt) ? (
+                <>🔴 Em vigor agora — até {formatAlertTime(alert.endsAt)}</>
+              ) : (
+                <>
+                  ⏳ Ainda não começou — a partir de{" "}
+                  {formatAlertTime(alert.startsAt)}
+                </>
+              )}
+            </p>
             <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
               {alert.description}
             </p>
