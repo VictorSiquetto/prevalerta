@@ -1,12 +1,25 @@
 import type { Location } from "@/types/location";
 import type { Weather } from "@/types/weather";
+import { classifyRisk, type RiskLevel } from "@/lib/riskClassification";
 
 type WeatherCardProps = {
   location: Location;
   weather: Weather;
 };
 
+const riskStyles: Record<RiskLevel, string> = {
+  normal:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  atencao:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300",
+  risco_elevado:
+    "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+  critico: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+};
+
 export default function WeatherCard({ location, weather }: WeatherCardProps) {
+  const risk = classifyRisk(weather);
+
   return (
     <div className="mt-8 w-full rounded-2xl bg-white p-6 text-left shadow-md dark:bg-zinc-900">
       <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -27,6 +40,18 @@ export default function WeatherCard({ location, weather }: WeatherCardProps) {
         <Row label="Vento" value={`${weather.windSpeed} km/h`} />
         <Row label="Rajadas" value={`${weather.windGusts} km/h`} />
       </div>
+
+      <div
+        className={`mt-6 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${riskStyles[risk.level]}`}
+      >
+        <span>{risk.emoji}</span>
+        <span>{risk.label}</span>
+      </div>
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        Classificação calculada pelo aplicativo com base nos dados
+        meteorológicos disponíveis. Não substitui alertas oficiais da Defesa
+        Civil.
+      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
-export function getWeatherIcon(code: number): string {
-  if (code === 0) return "☀️";
-  if (code === 1 || code === 2) return "🌤️";
+export function getWeatherIcon(code: number, isDay: boolean): string {
+  if (code === 0) return isDay ? "☀️" : "🌙";
+  if (code === 1 || code === 2) return isDay ? "🌤️" : "☁️";
   if (code === 3) return "☁️";
   if (code === 45 || code === 48) return "🌫️";
   if ([51, 53, 55, 56, 57].includes(code)) return "🌦️";

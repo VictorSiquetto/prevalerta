@@ -22,7 +22,9 @@ export default function HourlyForecastList({
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {hour.time.slice(11, 16)}
             </span>
-            <span className="text-2xl">{getWeatherIcon(hour.weatherCode)}</span>
+            <span className="text-2xl">
+              {getWeatherIcon(hour.weatherCode, hour.isDay)}
+            </span>
             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
               {Math.round(hour.temperature)}°C
             </span>

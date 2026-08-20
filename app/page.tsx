@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { searchCity } from "@/services/geocoding";
 import { getWeather } from "@/services/weather";
 import type { Location } from "@/types/location";
@@ -12,27 +12,61 @@ export default function Home() {
   const [city, setCity] = useState("");
   const [location, setLocation] = useState<Location | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isFetchingRef = useRef(false);
 
   async function handleSearch() {
-    if (!city.trim()) return;
+    if (isFetchingRef.current) return;
 
-    const found = await searchCity(city);
-
-    if (!found) {
-      console.log("Cidade não encontrada");
-      setLocation(null);
-      setWeather(null);
+    if (!city.trim()) {
+      setError("Digite o nome de uma cidade.");
       return;
     }
 
-    setLocation(found);
+    isFetchingRef.current = true;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const found = await searchCity(city);
 
-    const weatherData = await getWeather(found.latitude, found.longitude);
-    setWeather(weatherData);
+      if (!found) {
+        setLocation(null);
+        setWeather(null);
+        setError(
+          "Não conseguimos encontrar essa cidade. Verifique o nome e tente novamente."
+        );
+        return;
+      }
+
+      if (found.state !== "São Paulo") {
+        setLocation(null);
+        setWeather(null);
+        setError(
+          "No momento, este aplicativo cobre apenas cidades do Estado de São Paulo."
+        );
+        return;
+      }
+
+      setLocation(found);
+
+      const weatherData = await getWeather(found.latitude, found.longitude);
+      setWeather(weatherData);
+    } catch (caughtError) {
+      console.error("Falha ao buscar dados meteorológicos:", caughtError);
+      setLocation(null);
+      setWeather(null);
+      setError(
+        "Não foi possível obter os dados meteorológicos. Tente novamente."
+      );
+    } finally {
+      isFetchingRef.current = false;
+      setIsLoading(false);
+    }
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 dark:bg-black">
+    <div className="flex min-h-screen flex-col items-center bg-zinc-50 px-4 py-12 dark:bg-black">
       <main className="w-full max-w-md text-center">
         <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
           Clima SP
@@ -51,13 +85,26 @@ export default function Home() {
           />
           <button
             onClick={handleSearch}
-            className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            disabled={isLoading}
+            className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
-            Pesquisar
+            {isLoading ? "Buscando..." : "Pesquisar"}
           </button>
         </div>
 
-        {location && weather && (
+        {isLoading && (
+          <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
+            Buscando condições meteorológicas...
+          </p>
+        )}
+
+        {!isLoading && error && (
+          <p className="mt-6 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+            {error}
+          </p>
+        )}
+
+        {!isLoading && !error && location && weather && (
           <>
             <WeatherCard location={location} weather={weather} />
             <HourlyForecastList hourly={weather.hourly} />

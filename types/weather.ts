@@ -4,6 +4,7 @@ export type HourlyForecast = {
   precipitationProbability: number;
   precipitation: number;
   weatherCode: number;
+  isDay: boolean;
 };
 
 export type Weather = {

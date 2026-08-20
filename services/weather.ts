@@ -9,6 +9,10 @@ export async function getWeather(
   const response = await fetch(url);
   const data = await response.json();
 
+  if (!response.ok || !data.hourly || !data.current) {
+    throw new Error("Resposta inválida da API de clima.");
+  }
+
   const hourly: HourlyForecast[] = data.hourly.time
     .map((time: string, index: number) => ({
       time,
@@ -16,6 +20,7 @@ export async function getWeather(
       precipitationProbability: data.hourly.precipitation_probability[index],
       precipitation: data.hourly.precipitation[index],
       weatherCode: data.hourly.weather_code[index],
+      isDay: data.hourly.is_day[index] === 1,
     }))
     .filter((hour: HourlyForecast) => hour.time >= data.current.time)
     .slice(0, 6);
