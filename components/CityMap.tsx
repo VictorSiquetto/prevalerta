@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
+  Circle,
+  GeoJSON,
   AttributionControl,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
+import type { GeoJsonObject } from "geojson";
 import "leaflet/dist/leaflet.css";
+import type { RiskLevel } from "@/lib/riskClassification";
+import type { Location } from "@/types/location";
 
 const defaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -26,19 +31,22 @@ const defaultIcon = L.icon({
 const SAO_PAULO_STATE_CENTER: [number, number] = [-22.19, -48.79];
 const STATE_ZOOM = 7;
 const CITY_ZOOM = 12;
+const RISK_CIRCLE_RADIUS_METERS = 15000;
 
-export type MapLocation = {
-  latitude: number;
-  longitude: number;
-  name: string;
+const RISK_COLORS: Record<RiskLevel, string> = {
+  normal: "#10b981",
+  atencao: "#eab308",
+  risco_elevado: "#f97316",
+  critico: "#ef4444",
 };
 
 type CityMapProps = {
-  location: MapLocation | null;
+  location: Location | null;
   temperature?: number;
+  riskLevel?: RiskLevel;
 };
 
-function MapUpdater({ location }: { location: MapLocation | null }) {
+function MapUpdater({ location }: { location: Location | null }) {
   const map = useMap();
 
   useEffect(() => {
@@ -52,7 +60,34 @@ function MapUpdater({ location }: { location: MapLocation | null }) {
   return null;
 }
 
-export default function CityMap({ location, temperature }: CityMapProps) {
+function StateBoundary() {
+  const [boundary, setBoundary] = useState<GeoJsonObject | null>(null);
+
+  useEffect(() => {
+    fetch("/data/sp-boundary.geojson")
+      .then((response) => response.json())
+      .then(setBoundary)
+      .catch((error) =>
+        console.error("Falha ao carregar contorno do Estado de SP:", error)
+      );
+  }, []);
+
+  if (!boundary) return null;
+
+  return (
+    <GeoJSON
+      data={boundary}
+      interactive={false}
+      style={{ color: "#000000", weight: 3, fillOpacity: 0, opacity: 0.75 }}
+    />
+  );
+}
+
+export default function CityMap({
+  location,
+  temperature,
+  riskLevel,
+}: CityMapProps) {
   return (
     <MapContainer
       center={SAO_PAULO_STATE_CENTER}
@@ -66,7 +101,20 @@ export default function CityMap({ location, temperature }: CityMapProps) {
       />
       {/* prefix={false} remove só o crédito da biblioteca Leaflet; o aviso do OpenStreetMap continua, pois é obrigatório */}
       <AttributionControl position="bottomright" prefix={false} />
+      <StateBoundary />
       <MapUpdater location={location} />
+      {location && riskLevel && (
+        <Circle
+          center={[location.latitude, location.longitude]}
+          radius={RISK_CIRCLE_RADIUS_METERS}
+          pathOptions={{
+            color: RISK_COLORS[riskLevel],
+            fillColor: RISK_COLORS[riskLevel],
+            fillOpacity: 0.2,
+            weight: 2,
+          }}
+        />
+      )}
       {location && (
         <Marker
           position={[location.latitude, location.longitude]}

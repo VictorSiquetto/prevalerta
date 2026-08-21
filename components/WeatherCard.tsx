@@ -1,12 +1,11 @@
 import type { Location } from "@/types/location";
 import type { Weather } from "@/types/weather";
-import type { WeatherAlert } from "@/types/alert";
-import { classifyRisk, type RiskLevel } from "@/lib/riskClassification";
+import type { RiskClassification, RiskLevel } from "@/lib/riskClassification";
 
 type WeatherCardProps = {
   location: Location;
   weather: Weather;
-  alerts: WeatherAlert[];
+  risk: RiskClassification;
 };
 
 const riskStyles: Record<RiskLevel, string> = {
@@ -22,10 +21,8 @@ const riskStyles: Record<RiskLevel, string> = {
 export default function WeatherCard({
   location,
   weather,
-  alerts,
+  risk,
 }: WeatherCardProps) {
-  const risk = classifyRisk(weather, alerts);
-
   return (
     <div className="w-full rounded-2xl bg-white p-6 text-left shadow-md dark:bg-zinc-900">
       <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">

@@ -1,4 +1,5 @@
 import { getMesoregion } from "@/services/mesoregion";
+import { parseAlertDate } from "@/lib/formatAlertTime";
 
 const INMET_FEED_URL = "https://apiprevmet3.inmet.gov.br/avisos/rss";
 
@@ -18,10 +19,7 @@ function extractTableValues(html: string): string[] {
 }
 
 function isExpired(endsAt: string): boolean {
-  // "2026-08-19 23:59:00.0" (sempre em UTC) -> "2026-08-19T23:59:00Z"
-  const isoString = `${endsAt.replace(" ", "T").replace(/\.\d+$/, "")}Z`;
-  const endDate = new Date(isoString);
-  return endDate.getTime() < Date.now();
+  return parseAlertDate(endsAt).getTime() < Date.now();
 }
 
 function parseAreas(rawArea: string): string[] {

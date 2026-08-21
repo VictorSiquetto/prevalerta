@@ -5,11 +5,13 @@ import dynamic from "next/dynamic";
 import { searchCity } from "@/services/geocoding";
 import { getWeather } from "@/services/weather";
 import { getAlerts, type AlertsResult } from "@/services/alerts";
+import { classifyRisk } from "@/lib/riskClassification";
 import type { Location } from "@/types/location";
 import type { Weather } from "@/types/weather";
 import WeatherCard from "@/components/WeatherCard";
 import HourlyForecastList from "@/components/HourlyForecastList";
 import AlertsList from "@/components/AlertsList";
+import StatusMessage from "@/components/StatusMessage";
 
 const CityMap = dynamic(() => import("@/components/CityMap"), {
   ssr: false,
@@ -112,11 +114,17 @@ export default function Home() {
   }
 
   const showPanel = isLoading || error || (location && weather);
+  const risk =
+    location && weather ? classifyRisk(weather, alertsResult.alerts) : null;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-black">
       <div className="absolute inset-0 z-0">
-        <CityMap location={location} temperature={weather?.temperature} />
+        <CityMap
+          location={location}
+          temperature={weather?.temperature}
+          riskLevel={risk?.level}
+        />
       </div>
 
       <form
@@ -146,25 +154,11 @@ export default function Home() {
       {/* Desktop (xl+): painel direito com clima e previsão */}
       {showPanel && (
         <div className="fixed top-24 right-4 bottom-4 z-[1100] hidden w-80 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm xl:block dark:bg-zinc-900/95">
-          {isLoading && (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Buscando condições meteorológicas...
-            </p>
-          )}
+          <StatusMessage isLoading={isLoading} error={error} />
 
-          {!isLoading && error && (
-            <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-              {error}
-            </p>
-          )}
-
-          {!isLoading && !error && location && weather && (
+          {!isLoading && !error && location && weather && risk && (
             <>
-              <WeatherCard
-                location={location}
-                weather={weather}
-                alerts={alertsResult.alerts}
-              />
+              <WeatherCard location={location} weather={weather} risk={risk} />
               <HourlyForecastList hourly={weather.hourly} />
             </>
           )}
@@ -203,25 +197,11 @@ export default function Home() {
           </div>
 
           <div className="max-h-[calc(70vh-3.5rem)] overflow-y-auto px-4 pb-4">
-            {isLoading && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Buscando condições meteorológicas...
-              </p>
-            )}
+            <StatusMessage isLoading={isLoading} error={error} />
 
-            {!isLoading && error && (
-              <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-                {error}
-              </p>
-            )}
-
-            {!isLoading && !error && location && weather && (
+            {!isLoading && !error && location && weather && risk && (
               <>
-                <WeatherCard
-                  location={location}
-                  weather={weather}
-                  alerts={alertsResult.alerts}
-                />
+                <WeatherCard location={location} weather={weather} risk={risk} />
                 <HourlyForecastList hourly={weather.hourly} />
                 <AlertsList
                   alerts={alertsResult.alerts}
