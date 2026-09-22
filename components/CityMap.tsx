@@ -132,23 +132,37 @@ export default function CityMap({
         <>
           {routeStops.length >= 2 &&
             (routeInfo ? (
-              // Rota real, seguindo as estradas (OSRM).
-              <Polyline
-                positions={routeInfo.coordinates}
-                pathOptions={{ color: "#2563eb", weight: 4 }}
-              />
+              // Rota real, seguindo as estradas (OSRM). O contorno branco por
+              // baixo ("casing") garante contraste em cima de qualquer fundo
+              // do mapa — sem ele, uma linha fina se camufla facilmente.
+              <>
+                <Polyline
+                  positions={routeInfo.coordinates}
+                  pathOptions={{ color: "#ffffff", weight: 7, opacity: 0.9 }}
+                />
+                <Polyline
+                  positions={routeInfo.coordinates}
+                  pathOptions={{ color: "#1e3a8a", weight: 4 }}
+                />
+              </>
             ) : (
               // Enquanto a rota real não chega (ou se falhar), uma linha reta
               // tracejada entre as paradas serve de indicação provisória.
-              <Polyline
-                positions={routeStops.map(toLatLng)}
-                pathOptions={{
-                  color: "#2563eb",
-                  weight: 3,
-                  opacity: 0.6,
-                  dashArray: "8 8",
-                }}
-              />
+              <>
+                <Polyline
+                  positions={routeStops.map(toLatLng)}
+                  pathOptions={{ color: "#ffffff", weight: 6, opacity: 0.7 }}
+                />
+                <Polyline
+                  positions={routeStops.map(toLatLng)}
+                  pathOptions={{
+                    color: "#1e3a8a",
+                    weight: 3,
+                    opacity: 0.9,
+                    dashArray: "8 8",
+                  }}
+                />
+              </>
             ))}
           {routeStops.map((stop, index) => (
             <Marker key={`${stop.name}-${index}`} position={toLatLng(stop)} icon={defaultIcon}>

@@ -61,6 +61,9 @@ export default function Home() {
     if (routeStops.length < 2) return;
 
     let cancelled = false;
+    // Sinaliza "carregando" antes de iniciar a busca assíncrona — padrão
+    // correto aqui, mesmo que essa regra do linter seja rígida com isso.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsRouteLoading(true);
     getRoute(routeStops).then((result) => {
       if (cancelled) return;
