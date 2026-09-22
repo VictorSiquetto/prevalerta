@@ -51,10 +51,8 @@ export default function WeatherCard({
         <span>{risk.label}</span>
       </div>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        {risk.source === "alert"
-          ? "Nível elevado por um alerta oficial do INMET em vigor para a região."
-          : "Classificação calculada pelo aplicativo com base nos dados meteorológicos disponíveis."}{" "}
-        Não substitui alertas oficiais da Defesa Civil.
+        Calculado só com os dados do clima local. Veja os alertas do INMET;
+        não substitui os alertas oficiais da Defesa Civil.
       </p>
     </div>
   );

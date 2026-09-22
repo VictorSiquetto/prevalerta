@@ -12,6 +12,7 @@ import WeatherCard from "@/components/WeatherCard";
 import HourlyForecastList from "@/components/HourlyForecastList";
 import AlertsList from "@/components/AlertsList";
 import StatusMessage from "@/components/StatusMessage";
+import AiSummary from "@/components/AiSummary";
 
 const CityMap = dynamic(() => import("@/components/CityMap"), {
   ssr: false,
@@ -114,8 +115,18 @@ export default function Home() {
   }
 
   const showPanel = isLoading || error || (location && weather);
-  const risk =
-    location && weather ? classifyRisk(weather, alertsResult.alerts) : null;
+  const risk = weather ? classifyRisk(weather) : null;
+  const summaryData =
+    location && weather
+      ? {
+          location,
+          weather,
+          alerts: alertsResult.alerts,
+          mesoregion: alertsResult.mesoregion,
+        }
+      : null;
+  // Uma busca nova gera uma chave nova, o que zera o resumo anterior.
+  const summaryKey = `${location?.name}-${weather?.hourly[0]?.time}`;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-black">
@@ -159,6 +170,9 @@ export default function Home() {
           {!isLoading && !error && location && weather && risk && (
             <>
               <WeatherCard location={location} weather={weather} risk={risk} />
+              {summaryData && (
+                <AiSummary key={summaryKey} data={summaryData} />
+              )}
               <HourlyForecastList hourly={weather.hourly} />
             </>
           )}
@@ -202,6 +216,9 @@ export default function Home() {
             {!isLoading && !error && location && weather && risk && (
               <>
                 <WeatherCard location={location} weather={weather} risk={risk} />
+                {summaryData && (
+                  <AiSummary key={summaryKey} data={summaryData} />
+                )}
                 <HourlyForecastList hourly={weather.hourly} />
                 <AlertsList
                   alerts={alertsResult.alerts}
