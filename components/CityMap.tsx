@@ -7,6 +7,7 @@ import {
   Marker,
   Popup,
   Circle,
+  Polyline,
   GeoJSON,
   AttributionControl,
   useMap,
@@ -16,6 +17,7 @@ import type { GeoJsonObject } from "geojson";
 import "leaflet/dist/leaflet.css";
 import type { RiskLevel } from "@/lib/riskClassification";
 import type { Location } from "@/types/location";
+import type { RouteInfo } from "@/types/route";
 
 const defaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -44,18 +46,36 @@ type CityMapProps = {
   location: Location | null;
   temperature?: number;
   riskLevel?: RiskLevel;
+  routeStops?: Location[];
+  routeInfo?: RouteInfo | null;
 };
 
-function MapUpdater({ location }: { location: Location | null }) {
+function toLatLng(stop: Location): [number, number] {
+  return [stop.latitude, stop.longitude];
+}
+
+function MapUpdater({
+  location,
+  routeStops,
+}: {
+  location: Location | null;
+  routeStops: Location[];
+}) {
   const map = useMap();
 
   useEffect(() => {
-    if (location) {
-      map.flyTo([location.latitude, location.longitude], CITY_ZOOM);
+    if (routeStops.length >= 2) {
+      map.fitBounds(L.latLngBounds(routeStops.map(toLatLng)), {
+        padding: [48, 48],
+      });
+    } else if (routeStops.length === 1) {
+      map.flyTo(toLatLng(routeStops[0]), CITY_ZOOM);
+    } else if (location) {
+      map.flyTo(toLatLng(location), CITY_ZOOM);
     } else {
       map.flyTo(SAO_PAULO_STATE_CENTER, STATE_ZOOM);
     }
-  }, [location, map]);
+  }, [location, routeStops, map]);
 
   return null;
 }
@@ -87,7 +107,11 @@ export default function CityMap({
   location,
   temperature,
   riskLevel,
+  routeStops = [],
+  routeInfo,
 }: CityMapProps) {
+  const hasRoute = routeStops.length > 0;
+
   return (
     <MapContainer
       center={SAO_PAULO_STATE_CENTER}
@@ -102,30 +126,62 @@ export default function CityMap({
       {/* prefix={false} remove só o crédito da biblioteca Leaflet; o aviso do OpenStreetMap continua, pois é obrigatório */}
       <AttributionControl position="bottomright" prefix={false} />
       <StateBoundary />
-      <MapUpdater location={location} />
-      {location && riskLevel && (
-        <Circle
-          center={[location.latitude, location.longitude]}
-          radius={RISK_CIRCLE_RADIUS_METERS}
-          pathOptions={{
-            color: RISK_COLORS[riskLevel],
-            fillColor: RISK_COLORS[riskLevel],
-            fillOpacity: 0.2,
-            weight: 2,
-          }}
-        />
-      )}
-      {location && (
-        <Marker
-          position={[location.latitude, location.longitude]}
-          icon={defaultIcon}
-        >
-          <Popup>
-            {location.name}
-            {typeof temperature === "number" &&
-              ` — ${Math.round(temperature)}°C`}
-          </Popup>
-        </Marker>
+      <MapUpdater location={location} routeStops={routeStops} />
+
+      {hasRoute ? (
+        <>
+          {routeStops.length >= 2 &&
+            (routeInfo ? (
+              // Rota real, seguindo as estradas (OSRM).
+              <Polyline
+                positions={routeInfo.coordinates}
+                pathOptions={{ color: "#2563eb", weight: 4 }}
+              />
+            ) : (
+              // Enquanto a rota real não chega (ou se falhar), uma linha reta
+              // tracejada entre as paradas serve de indicação provisória.
+              <Polyline
+                positions={routeStops.map(toLatLng)}
+                pathOptions={{
+                  color: "#2563eb",
+                  weight: 3,
+                  opacity: 0.6,
+                  dashArray: "8 8",
+                }}
+              />
+            ))}
+          {routeStops.map((stop, index) => (
+            <Marker key={`${stop.name}-${index}`} position={toLatLng(stop)} icon={defaultIcon}>
+              <Popup>
+                {index + 1}. {stop.name} - {stop.state}
+              </Popup>
+            </Marker>
+          ))}
+        </>
+      ) : (
+        <>
+          {location && riskLevel && (
+            <Circle
+              center={toLatLng(location)}
+              radius={RISK_CIRCLE_RADIUS_METERS}
+              pathOptions={{
+                color: RISK_COLORS[riskLevel],
+                fillColor: RISK_COLORS[riskLevel],
+                fillOpacity: 0.2,
+                weight: 2,
+              }}
+            />
+          )}
+          {location && (
+            <Marker position={toLatLng(location)} icon={defaultIcon}>
+              <Popup>
+                {location.name}
+                {typeof temperature === "number" &&
+                  ` — ${Math.round(temperature)}°C`}
+              </Popup>
+            </Marker>
+          )}
+        </>
       )}
     </MapContainer>
   );

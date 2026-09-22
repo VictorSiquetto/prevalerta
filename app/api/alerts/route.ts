@@ -37,7 +37,11 @@ export async function GET(request: Request) {
 
     const mesoregion = city ? await getMesoregion(city) : null;
 
-    const response = await fetch(INMET_FEED_URL);
+    // Guarda o feed do INMET por 5 minutos: ele é o mesmo para qualquer
+    // cidade, então evita rebaixar a rede toda vez que alguém pesquisa.
+    const response = await fetch(INMET_FEED_URL, {
+      next: { revalidate: 300 },
+    });
     const xml = await response.text();
 
     const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(

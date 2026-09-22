@@ -12,8 +12,10 @@ let cachedMunicipios: Municipio[] | null = null;
 async function getSaoPauloMunicipios(): Promise<Municipio[]> {
   if (cachedMunicipios) return cachedMunicipios;
 
+  // A lista de municípios do IBGE quase nunca muda: guarda por 1 dia.
   const response = await fetch(
-    "https://servicodados.ibge.gov.br/api/v1/localidades/estados/SP/municipios"
+    "https://servicodados.ibge.gov.br/api/v1/localidades/estados/SP/municipios",
+    { next: { revalidate: 86400 } }
   );
   const data: Municipio[] = await response.json();
   cachedMunicipios = data;
