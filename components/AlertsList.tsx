@@ -1,11 +1,9 @@
-import type { WeatherAlert } from "@/types/alert";
+import type { AlertsResult } from "@/types/alert";
 import { formatAlertTime, hasAlertStarted } from "@/lib/formatAlertTime";
 
 type AlertsListProps = {
-  alerts: WeatherAlert[];
-  mesoregion: string | null;
+  alertsResult: AlertsResult;
   cityName: string;
-  unavailable: boolean;
 };
 
 const severityStyles: Record<string, string> = {
@@ -16,10 +14,8 @@ const severityStyles: Record<string, string> = {
 };
 
 export default function AlertsList({
-  alerts,
-  mesoregion,
+  alertsResult: { alerts, mesoregion, unavailable },
   cityName,
-  unavailable,
 }: AlertsListProps) {
   if (unavailable) {
     return (

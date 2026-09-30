@@ -1,4 +1,4 @@
-import { classifyRisk, RISK_COLORS } from "@/lib/riskClassification";
+import { classifyRisk } from "@/lib/riskClassification";
 import type { Location } from "@/types/location";
 import type { StopDataState } from "@/types/route";
 
@@ -27,8 +27,8 @@ export default function RouteStopTabs({
       {stops.map((stop, index) => {
         const state = stopData[stop.name];
         const isSelected = stop.name === selectedName;
-        const risk =
-          state?.status === "ready" ? classifyRisk(state.data.weather) : null;
+        const weather = state?.status === "ready" ? state.data.weather : null;
+        const risk = weather ? classifyRisk(weather) : null;
 
         return (
           <button
@@ -46,13 +46,13 @@ export default function RouteStopTabs({
           >
             <span className="opacity-60">{index + 1}</span>
             <span className="truncate">{stop.name}</span>
-            {state?.status === "ready" && risk ? (
+            {weather && risk ? (
               <>
-                <span>{Math.round(state.data.weather.temperature)}°</span>
+                <span>{Math.round(weather.temperature)}°</span>
                 <span
                   aria-hidden
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: RISK_COLORS[risk.level] }}
+                  style={{ backgroundColor: risk.color }}
                 />
               </>
             ) : state?.status === "error" ? (

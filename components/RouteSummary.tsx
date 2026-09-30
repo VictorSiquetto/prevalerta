@@ -1,13 +1,13 @@
 "use client";
 
-import { getRouteSummary } from "@/services/summary";
+import { getSummary } from "@/services/summary";
 import { useSummaryGeneration } from "@/lib/useSummaryGeneration";
-import type { RouteSummaryRequest } from "@/types/summary";
+import type { CityReport } from "@/types/weather";
 
 type RouteSummaryProps = {
-  // null enquanto não dá para resumir (paradas carregando, com erro, etc.);
-  // nesse caso `hint` explica o motivo.
-  data: RouteSummaryRequest | null;
+  // Paradas na ordem da rota, ou null enquanto não dá para resumir
+  // (paradas carregando, com erro, etc.); nesse caso `hint` explica o motivo.
+  stops: CityReport[] | null;
   hint: string | null;
   summary: string | null;
   onSummary: (summary: string) => void;
@@ -15,14 +15,14 @@ type RouteSummaryProps = {
 
 // Resumo com IA de todas as paradas de uma vez, dentro do painel de rota.
 export default function RouteSummary({
-  data,
+  stops,
   hint,
   summary,
   onSummary,
 }: RouteSummaryProps) {
   const { isLoading, error, run } = useSummaryGeneration(async () => {
-    if (!data) throw new Error("Dados da rota incompletos.");
-    return getRouteSummary(data);
+    if (!stops) throw new Error("Dados da rota incompletos.");
+    return getSummary(stops);
   }, onSummary);
 
   return (
@@ -45,7 +45,7 @@ export default function RouteSummary({
           <button
             type="button"
             onClick={run}
-            disabled={!data || isLoading}
+            disabled={!stops || isLoading}
             className="w-full rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? "Resumindo a rota..." : "Resumir rota com IA"}

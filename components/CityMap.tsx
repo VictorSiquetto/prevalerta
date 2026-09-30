@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -14,11 +14,13 @@ import {
 import L from "leaflet";
 import type { GeoJsonObject } from "geojson";
 import "leaflet/dist/leaflet.css";
-import { RISK_COLORS, type RiskLevel } from "@/lib/riskClassification";
-import type { Location } from "@/types/location";
-import type { RouteInfo } from "@/types/route";
+import spBoundary from "@/data/sp-boundary.json";
 import CityArea from "@/components/CityArea";
+import { classifyRisk } from "@/lib/riskClassification";
 import { getOverlayPadding, ROUTE_MAX_ZOOM } from "@/lib/mapView";
+import type { Location } from "@/types/location";
+import type { RouteInfo, StopDataState } from "@/types/route";
+import type { Weather } from "@/types/weather";
 
 // Ícones servidos pelo próprio app (cópias de leaflet/dist/images em
 // public/leaflet), em vez de depender de uma CDN externa que pode cair.
@@ -34,25 +36,33 @@ const defaultIcon = L.icon({
 
 const SAO_PAULO_STATE_CENTER: [number, number] = [-22.19, -48.79];
 const STATE_ZOOM = 7;
-
-export type StopConditions = {
-  temperature: number;
-  riskLevel: RiskLevel;
+// Contorno do Estado de SP (IBGE), embutido no código do mapa.
+const STATE_BOUNDARY = spBoundary as GeoJsonObject;
+const STATE_BOUNDARY_STYLE = {
+  color: "#000000",
+  weight: 3,
+  fillOpacity: 0,
+  opacity: 0.75,
 };
 
 type CityMapProps = {
+  // Cidade da busca principal e o clima dela (null enquanto carrega).
   location: Location | null;
-  temperature?: number;
-  riskLevel?: RiskLevel;
-  routeStops?: Location[];
-  routeInfo?: RouteInfo | null;
-  stopConditions?: Record<string, StopConditions>;
-  selectedStopName?: string | null;
-  onSelectStop?: (name: string) => void;
+  weather: Weather | null;
+  // Paradas da rota (vazio fora do modo rota) e os dados de cada uma.
+  routeStops: Location[];
+  routeInfo: RouteInfo | null;
+  stopData: Record<string, StopDataState>;
+  selectedStopName: string | null;
+  onSelectStop: (name: string) => void;
 };
 
 function toLatLng(stop: Location): [number, number] {
   return [stop.latitude, stop.longitude];
+}
+
+function readyWeather(state: StopDataState | undefined): Weather | null {
+  return state?.status === "ready" ? state.data.weather : null;
 }
 
 function MapUpdater({
@@ -81,41 +91,15 @@ function MapUpdater({
   return null;
 }
 
-function StateBoundary() {
-  const [boundary, setBoundary] = useState<GeoJsonObject | null>(null);
-
-  useEffect(() => {
-    fetch("/data/sp-boundary.geojson")
-      .then((response) => response.json())
-      .then(setBoundary)
-      .catch((error) =>
-        console.error("Falha ao carregar contorno do Estado de SP:", error)
-      );
-  }, []);
-
-  if (!boundary) return null;
-
-  return (
-    <GeoJSON
-      data={boundary}
-      interactive={false}
-      style={{ color: "#000000", weight: 3, fillOpacity: 0, opacity: 0.75 }}
-    />
-  );
-}
-
 export default function CityMap({
   location,
-  temperature,
-  riskLevel,
-  routeStops = [],
+  weather,
+  routeStops,
   routeInfo,
-  stopConditions = {},
+  stopData,
   selectedStopName,
   onSelectStop,
 }: CityMapProps) {
-  const hasRoute = routeStops.length > 0;
-
   return (
     <MapContainer
       center={SAO_PAULO_STATE_CENTER}
@@ -129,24 +113,28 @@ export default function CityMap({
       />
       {/* prefix={false} remove só o crédito da biblioteca Leaflet; o aviso do OpenStreetMap continua, pois é obrigatório */}
       <AttributionControl position="bottomright" prefix={false} />
-      <StateBoundary />
+      <GeoJSON
+        data={STATE_BOUNDARY}
+        interactive={false}
+        style={STATE_BOUNDARY_STYLE}
+      />
       <MapUpdater location={location} routeStops={routeStops} />
 
-      {hasRoute ? (
+      {routeStops.length > 0 ? (
         <>
           {/* Manchas de risco primeiro, para a linha da rota ficar por cima.
               A da parada selecionada fica mais forte que as demais. */}
           {routeStops.map((stop) => {
-            const conditions = stopConditions[stop.name];
-            if (!conditions) return null;
+            const stopWeather = readyWeather(stopData[stop.name]);
+            if (!stopWeather) return null;
             return (
               <CityArea
                 key={stop.name}
                 location={stop}
-                color={RISK_COLORS[conditions.riskLevel]}
+                color={classifyRisk(stopWeather).color}
                 emphasis={stop.name === selectedStopName ? "strong" : "soft"}
                 fitView={routeStops.length === 1}
-                onClick={() => onSelectStop?.(stop.name)}
+                onClick={() => onSelectStop(stop.name)}
               />
             );
           })}
@@ -191,42 +179,42 @@ export default function CityMap({
               </>
             ))}
           {routeStops.map((stop, index) => {
-            const conditions = stopConditions[stop.name];
+            const stopWeather = readyWeather(stopData[stop.name]);
             return (
               <Marker
                 key={stop.name}
                 position={toLatLng(stop)}
                 icon={defaultIcon}
-                eventHandlers={{ click: () => onSelectStop?.(stop.name) }}
+                eventHandlers={{ click: () => onSelectStop(stop.name) }}
               >
                 <Popup>
                   {index + 1}. {stop.name} - {stop.state}
-                  {conditions && ` — ${Math.round(conditions.temperature)}°C`}
+                  {stopWeather &&
+                    ` — ${Math.round(stopWeather.temperature)}°C`}
                 </Popup>
               </Marker>
             );
           })}
         </>
       ) : (
-        <>
-          {location && riskLevel && (
-            <CityArea
-              key={location.name}
-              location={location}
-              color={RISK_COLORS[riskLevel]}
-              fitView
-            />
-          )}
-          {location && (
+        location && (
+          <>
+            {weather && (
+              <CityArea
+                key={location.name}
+                location={location}
+                color={classifyRisk(weather).color}
+                fitView
+              />
+            )}
             <Marker position={toLatLng(location)} icon={defaultIcon}>
               <Popup>
                 {location.name}
-                {typeof temperature === "number" &&
-                  ` — ${Math.round(temperature)}°C`}
+                {weather && ` — ${Math.round(weather.temperature)}°C`}
               </Popup>
             </Marker>
-          )}
-        </>
+          </>
+        )
       )}
     </MapContainer>
   );

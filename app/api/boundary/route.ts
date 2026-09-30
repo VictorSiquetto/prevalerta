@@ -3,6 +3,8 @@ import { EXTERNAL_API_TIMEOUT_MS } from "@/lib/http";
 
 // Confere se a resposta é um GeoJSON com pelo menos um polígono: um
 // contorno vazio ou malformado quebraria o desenho e o enquadramento do mapa.
+type Feature = { geometry?: { type?: unknown; coordinates?: unknown } };
+
 function isBoundaryCollection(data: unknown): boolean {
   if (typeof data !== "object" || data === null) return false;
   const { type, features } = data as { type?: unknown; features?: unknown };
@@ -10,9 +12,8 @@ function isBoundaryCollection(data: unknown): boolean {
     type === "FeatureCollection" &&
     Array.isArray(features) &&
     features.length > 0 &&
-    features.every((feature) => {
-      const geometry = (feature as { geometry?: { type?: unknown; coordinates?: unknown } })
-        ?.geometry;
+    features.every((feature: Feature | null) => {
+      const geometry = feature?.geometry;
       return (
         (geometry?.type === "Polygon" || geometry?.type === "MultiPolygon") &&
         Array.isArray(geometry.coordinates) &&

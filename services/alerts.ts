@@ -1,13 +1,5 @@
-import type { WeatherAlert } from "@/types/alert";
+import type { AlertsResult } from "@/types/alert";
 import { CLIENT_TIMEOUT_MS } from "@/lib/http";
-
-export type AlertsResult = {
-  alerts: WeatherAlert[];
-  mesoregion: string | null;
-  // true quando não foi possível consultar o INMET (a lista vazia, nesse
-  // caso, não significa que não há alertas).
-  unavailable: boolean;
-};
 
 const UNAVAILABLE: AlertsResult = {
   alerts: [],
@@ -25,9 +17,9 @@ export async function getAlerts(city: string): Promise<AlertsResult> {
 
     const data = await response.json();
     return {
-      alerts: Array.isArray(data.alerts) ? data.alerts : [],
-      mesoregion: data.mesoregion ?? null,
-      unavailable: data.unavailable === true,
+      alerts: Array.isArray(data?.alerts) ? data.alerts : [],
+      mesoregion: typeof data?.mesoregion === "string" ? data.mesoregion : null,
+      unavailable: data?.unavailable === true,
     };
   } catch (error) {
     console.error("Falha ao buscar alertas:", error);

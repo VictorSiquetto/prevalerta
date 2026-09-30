@@ -2,19 +2,23 @@
 
 import { getSummary } from "@/services/summary";
 import { useSummaryGeneration } from "@/lib/useSummaryGeneration";
-import type { SummaryRequest } from "@/types/summary";
+import type { CityReport } from "@/types/weather";
 
 type AiSummaryProps = {
-  data: SummaryRequest;
+  report: CityReport;
   summary: string | null;
   onSummary: (summary: string) => void;
 };
 
 // O texto gerado fica guardado na página (por cidade), e não aqui: assim ele
 // não se perde ao trocar de aba entre as paradas da rota e voltar.
-export default function AiSummary({ data, summary, onSummary }: AiSummaryProps) {
+export default function AiSummary({
+  report,
+  summary,
+  onSummary,
+}: AiSummaryProps) {
   const { isLoading, error, run } = useSummaryGeneration(
-    () => getSummary(data),
+    () => getSummary([report]),
     onSummary
   );
 

@@ -1,6 +1,7 @@
 import { getMesoregion } from "@/services/mesoregion";
 import { parseAlertDate } from "@/lib/formatAlertTime";
 import { EXTERNAL_API_TIMEOUT_MS } from "@/lib/http";
+import type { WeatherAlert } from "@/types/alert";
 
 const INMET_FEED_URL = "https://apiprevmet3.inmet.gov.br/avisos/rss";
 
@@ -19,20 +20,48 @@ function extractTableValues(html: string): string[] {
   return matches.map((match) => match[1].trim());
 }
 
-function isValidDate(rawDate: string): boolean {
-  return !Number.isNaN(parseAlertDate(rawDate).getTime());
-}
-
-function isExpired(endsAt: string): boolean {
-  return parseAlertDate(endsAt).getTime() < Date.now();
-}
-
 function parseAreas(rawArea: string): string[] {
   const withoutPrefix = rawArea.replace(/^Aviso para as [ÁA]reas:\s*/i, "");
   return withoutPrefix
     .split(",")
     .map((area) => area.trim())
     .filter(Boolean);
+}
+
+// Transforma um <item> do feed em aviso. As áreas atingidas ficam à parte:
+// só servem para o filtro por região aqui no servidor, não vão para a tela.
+function parseItem(item: string): { alert: WeatherAlert; areas: string[] } {
+  const guid = extractTag(item, "guid");
+  const values = extractTableValues(
+    extractCData(extractTag(item, "description"))
+  );
+  const [, event, severity, startsAt, endsAt, description, rawArea] = values;
+
+  // O guid termina em ".../rss/{id}" — usamos esse id para montar o link da
+  // página visual do aviso (avisos.inmet.gov.br), em vez do XML técnico.
+  const alertId = guid.split("/").pop() ?? "";
+
+  return {
+    areas: parseAreas(rawArea ?? ""),
+    alert: {
+      id: guid,
+      event: event ?? "",
+      severity: severity ?? "",
+      startsAt: startsAt ?? "",
+      endsAt: endsAt ?? "",
+      description: description ?? "",
+      link: `https://avisos.inmet.gov.br/${encodeURIComponent(alertId)}`,
+    },
+  };
+}
+
+// Aviso ainda válido. Datas que não conseguimos ler são descartadas: além
+// de não dar para saber se o aviso está em vigor, formatar uma data
+// inválida quebraria a tela de alertas.
+function isActive({ startsAt, endsAt }: WeatherAlert): boolean {
+  const start = parseAlertDate(startsAt).getTime();
+  const end = parseAlertDate(endsAt).getTime();
+  return !Number.isNaN(start) && !Number.isNaN(end) && end >= Date.now();
 }
 
 export async function GET(request: Request) {
@@ -43,7 +72,7 @@ export async function GET(request: Request) {
     const mesoregion = city ? await getMesoregion(city) : null;
 
     // Guarda o feed do INMET por 5 minutos: ele é o mesmo para qualquer
-    // cidade, então evita rebaixar a rede toda vez que alguém pesquisa.
+    // cidade, então evita baixá-lo de novo a cada pesquisa.
     const response = await fetch(INMET_FEED_URL, {
       next: { revalidate: 300 },
       signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
@@ -53,54 +82,21 @@ export async function GET(request: Request) {
     }
     const xml = await response.text();
 
-    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(
-      (match) => match[1]
-    );
-
-    const alerts = items.map((item) => {
-      const guid = extractTag(item, "guid");
-      const descriptionHtml = extractCData(extractTag(item, "description"));
-      const values = extractTableValues(descriptionHtml);
-
-      const [, event, severity, startsAt, endsAt, description, rawArea] =
-        values;
-
-      // O guid termina em ".../rss/{id}" — usamos esse id para montar o
-      // link da página visual do aviso (avisos.inmet.gov.br), em vez do
-      // link técnico em XML puro.
-      const alertId = guid.split("/").pop() ?? "";
-
-      return {
-        id: guid,
-        event: event ?? "",
-        severity: severity ?? "",
-        startsAt: startsAt ?? "",
-        endsAt: endsAt ?? "",
-        description: description ?? "",
-        areas: parseAreas(rawArea ?? ""),
-        link: `https://avisos.inmet.gov.br/${alertId}`,
-      };
-    });
-
-    // Descarta avisos com datas que não conseguimos ler: além de não dar
-    // para saber se estão em vigor, formatar uma data inválida quebraria a
-    // tela de alertas.
-    const activeAlerts = alerts.filter(
-      (alert) =>
-        isValidDate(alert.startsAt) &&
-        isValidDate(alert.endsAt) &&
-        !isExpired(alert.endsAt)
-    );
-
-    const spAlerts = mesoregion
-      ? activeAlerts.filter((alert) => alert.areas.includes(mesoregion))
-      : activeAlerts.filter((alert) =>
-          alert.areas.some(
+    // Com a mesorregião, filtra os avisos exatos dela; sem ela, fica com
+    // os que citam regiões do Estado (a tela avisa que podem ser genéricos).
+    const isInRegion = (areas: string[]) =>
+      mesoregion
+        ? areas.includes(mesoregion)
+        : areas.some(
             (area) => area.includes("Paulista") || area.includes("São Paulo")
-          )
-        );
+          );
 
-    return Response.json({ alerts: spAlerts, mesoregion, unavailable: false });
+    const alerts = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+      .map((match) => parseItem(match[1]))
+      .filter(({ alert, areas }) => isActive(alert) && isInRegion(areas))
+      .map(({ alert }) => alert);
+
+    return Response.json({ alerts, mesoregion, unavailable: false });
   } catch (error) {
     // Sinaliza a falha em vez de devolver só uma lista vazia: "não há
     // alertas" e "não deu para consultar" são coisas bem diferentes.

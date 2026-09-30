@@ -1,21 +1,11 @@
-import type { Location } from "@/types/location";
-import type { Weather } from "@/types/weather";
-import type { WeatherAlert } from "@/types/alert";
+import type { CityReport } from "@/types/weather";
 
+// Uma cidade (resumo da cidade) ou várias, na ordem da viagem (resumo da
+// rota): a mesma rota da API atende os dois casos.
 export type SummaryRequest = {
-  location: Location;
-  weather: Weather;
-  alerts: WeatherAlert[];
-  alertsUnavailable: boolean;
-  mesoregion: string | null;
+  stops: CityReport[];
 };
 
-// Paradas na ordem da rota, cada uma com os mesmos dados do resumo de uma
-// cidade.
-export type RouteSummaryRequest = {
-  stops: SummaryRequest[];
-};
-
-// Limite de paradas no resumo da rota: mantém o texto enviado à IA (e a
-// resposta) num tamanho razoável.
-export const MAX_ROUTE_SUMMARY_STOPS = 10;
+// Limite de cidades num resumo: mantém o texto enviado à IA (e a resposta)
+// num tamanho razoável.
+export const MAX_SUMMARY_STOPS = 10;

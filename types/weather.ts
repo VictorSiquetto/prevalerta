@@ -1,3 +1,6 @@
+import type { AlertsResult } from "@/types/alert";
+import type { Location } from "@/types/location";
+
 export type HourlyForecast = {
   time: string;
   temperature: number;
@@ -17,3 +20,13 @@ export type Weather = {
   weatherCode: number;
   hourly: HourlyForecast[];
 };
+
+// Clima e alertas oficiais de uma cidade.
+export type CityData = {
+  weather: Weather;
+  alertsResult: AlertsResult;
+};
+
+// Uma cidade com os seus dados: o que o painel mostra e o que vai para o
+// resumo com IA.
+export type CityReport = CityData & { location: Location };

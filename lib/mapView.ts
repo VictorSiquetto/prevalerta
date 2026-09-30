@@ -34,9 +34,17 @@ export function getOverlayPadding(map: L.Map): L.FitBoundsOptions {
         case "top":
           top = Math.max(top, rect.bottom - mapRect.top);
           break;
-        case "bottom":
-          bottom = Math.max(bottom, mapRect.bottom - rect.top);
+        case "bottom": {
+          // A gaveta do celular cresce quando os dados terminam de carregar:
+          // conta com a altura máxima dela, não só com a atual.
+          const maxHeight = parseFloat(getComputedStyle(element).maxHeight);
+          const covered = mapRect.bottom - rect.top;
+          bottom = Math.max(
+            bottom,
+            Number.isFinite(maxHeight) ? Math.max(covered, maxHeight) : covered
+          );
           break;
+        }
         case "left":
           left = Math.max(left, rect.right - mapRect.left);
           break;
@@ -46,9 +54,16 @@ export function getOverlayPadding(map: L.Map): L.FitBoundsOptions {
       }
     });
 
+  // Sem espaço livre suficiente (celular com a gaveta e o painel de rota
+  // abertos, por exemplo), a margem de cima encolhe primeiro: o painel de
+  // rota é temporário, então ao fechá-lo o conteúdo já aparece acima da
+  // gaveta, que costuma continuar aberta.
   const freeHeight = mapRect.height - top - bottom - 2 * GAP;
   if (freeHeight < MIN_VISIBLE_SIZE) {
-    bottom = Math.max(0, bottom - (MIN_VISIBLE_SIZE - freeHeight));
+    const deficit = MIN_VISIBLE_SIZE - freeHeight;
+    const fromTop = Math.min(deficit, top);
+    top -= fromTop;
+    bottom = Math.max(0, bottom - (deficit - fromTop));
   }
   const freeWidth = mapRect.width - left - right - 2 * GAP;
   if (freeWidth < MIN_VISIBLE_SIZE) {

@@ -1,5 +1,7 @@
-import type { HourlyForecast, Weather } from "@/types/weather";
+import { getAlerts } from "@/services/alerts";
 import { CLIENT_TIMEOUT_MS } from "@/lib/http";
+import type { Location } from "@/types/location";
+import type { CityData, HourlyForecast, Weather } from "@/types/weather";
 
 function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -12,11 +14,8 @@ function numberOrZero(value: unknown): number {
   return isNumber(value) ? value : 0;
 }
 
-export async function getWeather(
-  latitude: number,
-  longitude: number
-): Promise<Weather> {
-  const url = `/api/weather?latitude=${latitude}&longitude=${longitude}`;
+async function getWeather(location: Location): Promise<Weather> {
+  const url = `/api/weather?latitude=${location.latitude}&longitude=${location.longitude}`;
 
   const response = await fetch(url, {
     signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
@@ -63,4 +62,14 @@ export async function getWeather(
     weatherCode: numberOrZero(current.weather_code),
     hourly: hours,
   };
+}
+
+// Clima e alertas de uma cidade, buscados ao mesmo tempo. Uma falha nos
+// alertas não impede o clima: ela vem marcada em `alertsResult.unavailable`.
+export async function getCityData(location: Location): Promise<CityData> {
+  const [weather, alertsResult] = await Promise.all([
+    getWeather(location),
+    getAlerts(location.name),
+  ]);
+  return { weather, alertsResult };
 }

@@ -1,9 +1,5 @@
-import {
-  MAX_ROUTE_SUMMARY_STOPS,
-  type RouteSummaryRequest,
-  type SummaryRequest,
-} from "@/types/summary";
-import type { HourlyForecast } from "@/types/weather";
+import { MAX_SUMMARY_STOPS, type SummaryRequest } from "@/types/summary";
+import type { CityReport, HourlyForecast } from "@/types/weather";
 import { classifyRisk } from "@/lib/riskClassification";
 import {
   formatAlertTime,
@@ -11,10 +7,15 @@ import {
   parseAlertDate,
 } from "@/lib/formatAlertTime";
 
+// Quanto de cada cidade entra no texto enviado à IA.
 const MAX_ALERTS = 10;
 const MAX_HOURS = 24;
+// Tamanho máximo das listas aceitas na validação (a tela nunca manda mais
+// que isso): impede que um pedido gigante ocupe o servidor.
+const MAX_HOURLY_ITEMS = 48;
+const MAX_ALERT_ITEMS = 50;
 
-export const SUMMARY_SYSTEM_PROMPT = `Você escreve um resumo MUITO CURTO da situação meteorológica de uma cidade do Estado de São Paulo para o aplicativo PreVAlerta, dirigido a pessoas comuns que querem entender rápido o que esperar nas próximas horas.
+const CITY_SYSTEM_PROMPT = `Você escreve um resumo MUITO CURTO da situação meteorológica de uma cidade do Estado de São Paulo para o aplicativo PreVAlerta, dirigido a pessoas comuns que querem entender rápido o que esperar nas próximas horas.
 
 Formato: português do Brasil, texto corrido, no máximo 3 frases curtas (cerca de 40 a 50 palavras no total), sem markdown, listas ou títulos.
 
@@ -26,7 +27,7 @@ Regras:
 - A classificação (NORMAL, ATENÇÃO, RISCO ELEVADO, CRÍTICO) é calculada pelo aplicativo por regras simples, usando apenas os dados meteorológicos do local. Ela não considera os alertas oficiais e não é um alerta. Não a contradiga nem diga que os alertas a influenciaram.
 - Não afirme por conta própria que o local é seguro ou perigoso: descreva o que os dados mostram.`;
 
-export const ROUTE_SUMMARY_SYSTEM_PROMPT = `Você escreve um resumo CURTO da situação meteorológica ao longo de uma rota com várias cidades do Estado de São Paulo para o aplicativo PreVAlerta, dirigido a pessoas comuns que vão viajar e querem uma visão geral rápida de todas as paradas.
+const ROUTE_SYSTEM_PROMPT = `Você escreve um resumo CURTO da situação meteorológica ao longo de uma rota com várias cidades do Estado de São Paulo para o aplicativo PreVAlerta, dirigido a pessoas comuns que vão viajar e querem uma visão geral rápida de todas as paradas.
 
 Formato: português do Brasil, texto corrido, no máximo 3 frases curtas e NUNCA mais de 60 palavras no total, sem markdown, listas ou títulos. Seja econômico: prefira uma visão geral a descrever cidade por cidade.
 
@@ -49,10 +50,9 @@ function isValidAlertDate(value: unknown): boolean {
   );
 }
 
-export function isSummaryRequest(body: unknown): body is SummaryRequest {
-  if (typeof body !== "object" || body === null) return false;
-  const { location, weather, alerts, alertsUnavailable, mesoregion } =
-    body as Partial<SummaryRequest>;
+function isCityReport(value: unknown): value is CityReport {
+  if (typeof value !== "object" || value === null) return false;
+  const { location, weather, alertsResult } = value as Partial<CityReport>;
 
   return (
     typeof location?.name === "string" &&
@@ -64,6 +64,7 @@ export function isSummaryRequest(body: unknown): body is SummaryRequest {
     isNumber(weather.windSpeed) &&
     isNumber(weather.windGusts) &&
     Array.isArray(weather.hourly) &&
+    weather.hourly.length <= MAX_HOURLY_ITEMS &&
     weather.hourly.every(
       (hour) =>
         typeof hour?.time === "string" &&
@@ -71,8 +72,9 @@ export function isSummaryRequest(body: unknown): body is SummaryRequest {
         isNumber(hour.precipitationProbability) &&
         isNumber(hour.precipitation)
     ) &&
-    Array.isArray(alerts) &&
-    alerts.every(
+    Array.isArray(alertsResult?.alerts) &&
+    alertsResult.alerts.length <= MAX_ALERT_ITEMS &&
+    alertsResult.alerts.every(
       (alert) =>
         typeof alert?.event === "string" &&
         typeof alert.severity === "string" &&
@@ -80,22 +82,21 @@ export function isSummaryRequest(body: unknown): body is SummaryRequest {
         isValidAlertDate(alert.startsAt) &&
         isValidAlertDate(alert.endsAt)
     ) &&
-    typeof alertsUnavailable === "boolean" &&
-    (mesoregion === null || typeof mesoregion === "string")
+    typeof alertsResult.unavailable === "boolean" &&
+    (alertsResult.mesoregion === null ||
+      typeof alertsResult.mesoregion === "string")
   );
 }
 
-export function isRouteSummaryRequest(
-  body: unknown
-): body is RouteSummaryRequest {
+export function isSummaryRequest(body: unknown): body is SummaryRequest {
   if (typeof body !== "object" || body === null) return false;
-  const { stops } = body as Partial<RouteSummaryRequest>;
+  const { stops } = body as Partial<SummaryRequest>;
 
   return (
     Array.isArray(stops) &&
-    stops.length >= 2 &&
-    stops.length <= MAX_ROUTE_SUMMARY_STOPS &&
-    stops.every(isSummaryRequest)
+    stops.length >= 1 &&
+    stops.length <= MAX_SUMMARY_STOPS &&
+    stops.every(isCityReport)
   );
 }
 
@@ -142,15 +143,15 @@ Maior chance de chuva nas próximas ${next.length} horas: ${peak.precipitationPr
 
 // Bloco de dados de uma cidade, usado tanto no resumo de uma cidade quanto
 // em cada parada do resumo da rota.
-function buildCityBlock(data: SummaryRequest, hourlyText: string): string {
-  const { location, weather, alerts, alertsUnavailable, mesoregion } = data;
+function buildCityBlock(report: CityReport, hourlyText: string): string {
+  const { location, weather, alertsResult } = report;
   const risk = classifyRisk(weather);
 
-  const alertsText = alertsUnavailable
+  const alertsText = alertsResult.unavailable
     ? "Não foi possível consultar os alertas do INMET agora. Não se sabe se há alertas ativos."
-    : alerts.length === 0
+    : alertsResult.alerts.length === 0
       ? "Nenhum alerta oficial do INMET ativo para a região."
-      : alerts
+      : alertsResult.alerts
           .slice(0, MAX_ALERTS)
           .map((alert) => {
             const period = hasAlertStarted(alert.startsAt)
@@ -161,7 +162,7 @@ function buildCityBlock(data: SummaryRequest, hourlyText: string): string {
           .join("\n");
 
   return `Cidade: ${clean(location.name, 80)} - ${clean(location.state, 40)}
-Mesorregião: ${mesoregion ? clean(mesoregion, 80) : "não identificada"}
+Mesorregião: ${alertsResult.mesoregion ? clean(alertsResult.mesoregion, 80) : "não identificada"}
 
 Condições atuais:
 - Temperatura: ${Math.round(weather.temperature)}°C
@@ -179,35 +180,46 @@ Alertas oficiais do INMET:
 ${alertsText}`;
 }
 
-export function buildSummaryPrompt(data: SummaryRequest): string {
-  const hourly = data.weather.hourly
-    .slice(0, MAX_HOURS)
-    .map(formatHourLine)
-    .join("\n");
+// Uma cidade usa o prompt do resumo da cidade; duas ou mais, o da rota.
+export function buildSummaryPrompt({ stops }: SummaryRequest): {
+  input: string;
+  systemInstruction: string;
+} {
+  if (stops.length === 1) {
+    const [city] = stops;
+    const hourly = city.weather.hourly
+      .slice(0, MAX_HOURS)
+      .map(formatHourLine)
+      .join("\n");
 
-  return `<dados>
+    return {
+      systemInstruction: CITY_SYSTEM_PROMPT,
+      input: `<dados>
 Horário atual (Brasília): ${formatNow()}
-${buildCityBlock(data, hourly)}
+${buildCityBlock(city, hourly)}
 </dados>
 
-Escreva o resumo.`;
-}
+Escreva o resumo.`,
+    };
+  }
 
-export function buildRouteSummaryPrompt(data: RouteSummaryRequest): string {
-  const stops = data.stops
+  const blocks = stops
     .map(
       (stop, index) =>
-        `=== Parada ${index + 1} de ${data.stops.length} ===
+        `=== Parada ${index + 1} de ${stops.length} ===
 ${buildCityBlock(stop, buildHourlyOverview(stop.weather.hourly))}`
     )
     .join("\n\n");
 
-  return `<dados>
+  return {
+    systemInstruction: ROUTE_SYSTEM_PROMPT,
+    input: `<dados>
 Horário atual (Brasília): ${formatNow()}
-Rota com ${data.stops.length} paradas, na ordem da viagem.
+Rota com ${stops.length} paradas, na ordem da viagem.
 
-${stops}
+${blocks}
 </dados>
 
-Escreva o resumo da rota.`;
+Escreva o resumo da rota.`,
+  };
 }

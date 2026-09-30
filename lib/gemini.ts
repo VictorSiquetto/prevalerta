@@ -2,12 +2,15 @@ import { ApiError, GoogleGenAI } from "@google/genai";
 
 const MODEL = "gemini-3.8-flash";
 
-// Gera um resumo com o Gemini e já devolve a resposta HTTP pronta, no mesmo
-// formato para o resumo de uma cidade e o da rota: { summary } ou { error }.
-export async function generateSummaryResponse(
-  input: string,
-  systemInstruction: string
-): Promise<Response> {
+// Gera o resumo com o Gemini e já devolve a resposta HTTP pronta:
+// { summary } ou { error }.
+export async function generateSummaryResponse({
+  input,
+  systemInstruction,
+}: {
+  input: string;
+  systemInstruction: string;
+}): Promise<Response> {
   if (!process.env.GEMINI_API_KEY) {
     return Response.json(
       { error: "Resumo por IA não configurado." },

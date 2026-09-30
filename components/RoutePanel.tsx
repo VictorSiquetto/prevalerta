@@ -4,8 +4,7 @@ import { useState } from "react";
 import type { Location } from "@/types/location";
 import type { RouteInfo } from "@/types/route";
 import { formatNumber } from "@/lib/format";
-
-type AddStopResult = { ok: true } | { ok: false; error: string };
+import type { AddStopResult } from "@/lib/useRoutePlanner";
 
 type RoutePanelProps = {
   stops: Location[];
@@ -80,10 +79,7 @@ export default function RoutePanel({
       ) : (
         <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
           {stops.map((stop, index) => (
-            <li
-              key={`${stop.name}-${index}`}
-              className="flex items-center gap-1"
-            >
+            <li key={stop.name} className="flex items-center gap-1">
               <span className="w-5 shrink-0 text-center text-xs font-semibold text-zinc-400 dark:text-zinc-500">
                 {index + 1}
               </span>

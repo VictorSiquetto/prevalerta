@@ -6,20 +6,15 @@ export type RiskClassification = {
   level: RiskLevel;
   label: string;
   emoji: string;
+  // Cor da mancha da cidade no mapa e do ponto nas abas da rota.
+  color: string;
 };
 
-const LEVEL_INFO: Record<RiskLevel, { label: string; emoji: string }> = {
-  normal: { label: "NORMAL", emoji: "🟢" },
-  atencao: { label: "ATENÇÃO", emoji: "🟡" },
-  risco_elevado: { label: "RISCO ELEVADO", emoji: "🟠" },
-  critico: { label: "CRÍTICO", emoji: "🔴" },
-};
-
-export const RISK_COLORS: Record<RiskLevel, string> = {
-  normal: "#10b981",
-  atencao: "#eab308",
-  risco_elevado: "#f97316",
-  critico: "#ef4444",
+const LEVEL_INFO: Record<RiskLevel, Omit<RiskClassification, "level">> = {
+  normal: { label: "NORMAL", emoji: "🟢", color: "#10b981" },
+  atencao: { label: "ATENÇÃO", emoji: "🟡", color: "#eab308" },
+  risco_elevado: { label: "RISCO ELEVADO", emoji: "🟠", color: "#f97316" },
+  critico: { label: "CRÍTICO", emoji: "🔴", color: "#ef4444" },
 };
 
 function getLevel(weather: Weather): RiskLevel {

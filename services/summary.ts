@@ -1,4 +1,4 @@
-import type { RouteSummaryRequest, SummaryRequest } from "@/types/summary";
+import type { CityReport } from "@/types/weather";
 import { SUMMARY_CLIENT_TIMEOUT_MS } from "@/lib/http";
 
 // Erro com mensagem já pronta para mostrar ao usuário.
@@ -17,11 +17,13 @@ function messageForStatus(status: number): string {
   return "Não foi possível gerar o resumo agora. Tente novamente.";
 }
 
-async function requestSummary(url: string, data: unknown): Promise<string> {
-  const response = await fetch(url, {
+// Uma cidade gera o resumo da cidade; várias (na ordem da rota), o resumo
+// da rota.
+export async function getSummary(stops: CityReport[]): Promise<string> {
+  const response = await fetch("/api/summary", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ stops }),
     signal: AbortSignal.timeout(SUMMARY_CLIENT_TIMEOUT_MS),
   });
   // Um erro da hospedagem (ex.: tempo esgotado) pode vir em HTML, não JSON.
@@ -34,12 +36,4 @@ async function requestSummary(url: string, data: unknown): Promise<string> {
   }
 
   return result.summary;
-}
-
-export function getSummary(data: SummaryRequest): Promise<string> {
-  return requestSummary("/api/summary", data);
-}
-
-export function getRouteSummary(data: RouteSummaryRequest): Promise<string> {
-  return requestSummary("/api/route-summary", data);
 }

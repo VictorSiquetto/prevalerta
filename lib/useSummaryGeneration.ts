@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useState } from "react";
 import { describeFetchError } from "@/lib/http";
 import { SummaryRequestError } from "@/services/summary";
