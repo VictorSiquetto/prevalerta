@@ -15,6 +15,13 @@ const LEVEL_INFO: Record<RiskLevel, { label: string; emoji: string }> = {
   critico: { label: "CRÍTICO", emoji: "🔴" },
 };
 
+export const RISK_COLORS: Record<RiskLevel, string> = {
+  normal: "#10b981",
+  atencao: "#eab308",
+  risco_elevado: "#f97316",
+  critico: "#ef4444",
+};
+
 function getLevel(weather: Weather): RiskLevel {
   const { precipitation, precipitationProbability, windGusts } = weather;
 

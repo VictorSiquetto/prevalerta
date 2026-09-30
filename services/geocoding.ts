@@ -6,9 +6,12 @@ export async function searchCity(city: string): Promise<Location | null> {
   )}&count=5&language=pt&format=json`;
 
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Geocoding respondeu com status ${response.status}`);
+  }
   const data = await response.json();
 
-  if (!data.results || data.results.length === 0) {
+  if (!Array.isArray(data.results) || data.results.length === 0) {
     return null;
   }
 

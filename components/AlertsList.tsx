@@ -4,6 +4,8 @@ import { formatAlertTime, hasAlertStarted } from "@/lib/formatAlertTime";
 type AlertsListProps = {
   alerts: WeatherAlert[];
   mesoregion: string | null;
+  cityName: string;
+  unavailable: boolean;
 };
 
 const severityStyles: Record<string, string> = {
@@ -13,17 +15,45 @@ const severityStyles: Record<string, string> = {
   "Grande Perigo": "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
 };
 
-export default function AlertsList({ alerts, mesoregion }: AlertsListProps) {
+export default function AlertsList({
+  alerts,
+  mesoregion,
+  cityName,
+  unavailable,
+}: AlertsListProps) {
+  if (unavailable) {
+    return (
+      <div className="w-full text-left">
+        <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+          Alertas oficiais do INMET
+        </p>
+        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          Não foi possível consultar os alertas do INMET agora. Confira
+          diretamente em{" "}
+          <a
+            href="https://portal.inmet.gov.br/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            portal.inmet.gov.br
+          </a>
+          .
+        </p>
+      </div>
+    );
+  }
+
   if (alerts.length === 0) return null;
 
   return (
-    <div className="mt-8 w-full text-left">
+    <div className="w-full text-left">
       <p className="font-semibold text-zinc-900 dark:text-zinc-50">
         Alertas oficiais do INMET
       </p>
       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
         {mesoregion
-          ? `Para a região de "${mesoregion}", onde sua cidade está localizada.`
+          ? `Para a região de "${mesoregion}", onde fica ${cityName}.`
           : "Cobrem regiões do Estado de São Paulo — pode não ser específico da sua cidade."}
       </p>
 

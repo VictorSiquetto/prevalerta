@@ -1,6 +1,7 @@
 import type { Location } from "@/types/location";
 import type { Weather } from "@/types/weather";
 import type { RiskClassification, RiskLevel } from "@/lib/riskClassification";
+import { formatNumber } from "@/lib/format";
 
 type WeatherCardProps = {
   location: Location;
@@ -34,14 +35,20 @@ export default function WeatherCard({
       </p>
 
       <div className="mt-6 space-y-2 text-sm">
-        <Row label="Umidade" value={`${weather.humidity}%`} />
-        <Row label="Chuva" value={`${weather.precipitation} mm`} />
+        <Row label="Umidade" value={`${formatNumber(weather.humidity)}%`} />
+        <Row
+          label="Chuva"
+          value={`${formatNumber(weather.precipitation)} mm`}
+        />
         <Row
           label="Probabilidade de chuva"
-          value={`${weather.precipitationProbability}%`}
+          value={`${formatNumber(weather.precipitationProbability)}%`}
         />
-        <Row label="Vento" value={`${weather.windSpeed} km/h`} />
-        <Row label="Rajadas" value={`${weather.windGusts} km/h`} />
+        <Row label="Vento" value={`${formatNumber(weather.windSpeed)} km/h`} />
+        <Row
+          label="Rajadas"
+          value={`${formatNumber(weather.windGusts)} km/h`}
+        />
       </div>
 
       <div
@@ -51,8 +58,8 @@ export default function WeatherCard({
         <span>{risk.label}</span>
       </div>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        Calculado só com os dados do clima local. Veja os alertas do INMET;
-        não substitui os alertas oficiais da Defesa Civil.
+        Calculado só com os dados do clima local, sem considerar os alertas do
+        INMET. Não substitui os alertas oficiais da Defesa Civil.
       </p>
     </div>
   );

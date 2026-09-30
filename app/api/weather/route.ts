@@ -1,11 +1,18 @@
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const latitude = searchParams.get("latitude");
-  const longitude = searchParams.get("longitude");
+  // Converte para número antes de montar a URL: repassar o texto cru
+  // permitiria injetar outros parâmetros na chamada à Open-Meteo.
+  const latitude = Number(searchParams.get("latitude") ?? NaN);
+  const longitude = Number(searchParams.get("longitude") ?? NaN);
 
-  if (!latitude || !longitude) {
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    Math.abs(latitude) > 90 ||
+    Math.abs(longitude) > 180
+  ) {
     return Response.json(
-      { error: "Parâmetros latitude e longitude são obrigatórios." },
+      { error: "Parâmetros latitude e longitude inválidos." },
       { status: 400 }
     );
   }

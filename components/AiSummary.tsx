@@ -4,8 +4,15 @@ import { useRef, useState } from "react";
 import { getSummary } from "@/services/summary";
 import type { SummaryRequest } from "@/types/summary";
 
-export default function AiSummary({ data }: { data: SummaryRequest }) {
-  const [summary, setSummary] = useState<string | null>(null);
+type AiSummaryProps = {
+  data: SummaryRequest;
+  summary: string | null;
+  onSummary: (summary: string) => void;
+};
+
+// O texto gerado fica guardado na página (por cidade), e não aqui: assim ele
+// não se perde ao trocar de aba entre as paradas da rota e voltar.
+export default function AiSummary({ data, summary, onSummary }: AiSummaryProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isRequestingRef = useRef(false);
@@ -17,7 +24,7 @@ export default function AiSummary({ data }: { data: SummaryRequest }) {
     setIsLoading(true);
     setError(null);
     try {
-      setSummary(await getSummary(data));
+      onSummary(await getSummary(data));
     } catch (caughtError) {
       console.error("Falha ao gerar resumo:", caughtError);
       setError("Não foi possível gerar o resumo agora. Tente novamente.");

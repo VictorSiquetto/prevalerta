@@ -1,6 +1,6 @@
 # PreVAlerta
 
-Plataforma web para consultar rapidamente a situação meteorológica e os riscos de uma cidade do Estado de São Paulo — clima atual, previsão das próximas 24 horas, alertas oficiais do governo e uma classificação de risco calculada automaticamente, tudo em um mapa interativo.
+Plataforma web para consultar rapidamente a situação meteorológica e os riscos de cidades do Estado de São Paulo — clima atual, previsão das próximas 24 horas, alertas oficiais do governo e uma classificação de risco calculada automaticamente, tudo em um mapa interativo. Também dá para montar uma rota com várias cidades e comparar a situação de cada parada.
 
 🔗 **Acesse:** [prev-alerta.vercel.app](https://prev-alerta.vercel.app)
 
@@ -15,12 +15,14 @@ A ideia surgiu de um problema real: ao planejar uma viagem de Mogi das Cruzes pa
 - Alertas meteorológicos oficiais do [INMET](https://portal.inmet.gov.br/), filtrados pela mesorregião exata da cidade pesquisada (dados geográficos via [IBGE](https://servicodados.ibge.gov.br/api/docs/localidades))
 - Classificação de risco (Normal / Atenção / Risco Elevado / Crítico) calculada por regras próprias apenas a partir dos dados meteorológicos do local — os alertas oficiais aparecem separados, sem alterar essa classificação
 - Resumo da situação em linguagem natural gerado por IA (Gemini), sob demanda, usando apenas os dados exibidos na tela — a IA explica, não decide: não cria nem altera alertas
+- Planejamento de rota com várias paradas: trajeto real pelas estradas via [OSRM](https://project-osrm.org/), com distância e tempo estimados, paradas reordenáveis e abas para alternar entre o clima, os alertas e o risco de cada cidade da rota
+- Histórico das pesquisas recentes, salvo no próprio navegador
 - Interface responsiva: mapa em tela cheia com painéis flutuantes no desktop, gaveta arrastável no celular
 
 ## Stack
 
 - [Next.js](https://nextjs.org/) (App Router) + TypeScript + Tailwind CSS
-- [React Leaflet](https://react-leaflet.js.org/) sobre [OpenStreetMap](https://www.openstreetmap.org/)
+- [React Leaflet](https://react-leaflet.js.org/) sobre [OpenStreetMap](https://www.openstreetmap.org/), rotas via [OSRM](https://project-osrm.org/)
 - API routes do próprio Next.js como backend, sem servidor separado
 - Deploy na [Vercel](https://vercel.com/)
 
@@ -44,7 +46,6 @@ Sem a chave, o restante do app funciona normalmente e o botão de resumo mostra 
 ## Próximos passos
 
 - Integração com dados de risco hidrológico/geológico (CEMADEN)
-- Comparação de condições entre origem e destino de uma viagem
 
 ## Licença
 

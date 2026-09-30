@@ -15,15 +15,16 @@ import {
 import L from "leaflet";
 import type { GeoJsonObject } from "geojson";
 import "leaflet/dist/leaflet.css";
-import type { RiskLevel } from "@/lib/riskClassification";
+import { RISK_COLORS, type RiskLevel } from "@/lib/riskClassification";
 import type { Location } from "@/types/location";
 import type { RouteInfo } from "@/types/route";
 
+// Ícones servidos pelo próprio app (cópias de leaflet/dist/images em
+// public/leaflet), em vez de depender de uma CDN externa que pode cair.
 const defaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: "/leaflet/marker-icon.png",
+  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+  shadowUrl: "/leaflet/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -35,11 +36,9 @@ const STATE_ZOOM = 7;
 const CITY_ZOOM = 12;
 const RISK_CIRCLE_RADIUS_METERS = 15000;
 
-const RISK_COLORS: Record<RiskLevel, string> = {
-  normal: "#10b981",
-  atencao: "#eab308",
-  risco_elevado: "#f97316",
-  critico: "#ef4444",
+export type StopConditions = {
+  temperature: number;
+  riskLevel: RiskLevel;
 };
 
 type CityMapProps = {
@@ -48,6 +47,9 @@ type CityMapProps = {
   riskLevel?: RiskLevel;
   routeStops?: Location[];
   routeInfo?: RouteInfo | null;
+  stopConditions?: Record<string, StopConditions>;
+  selectedStopName?: string | null;
+  onSelectStop?: (name: string) => void;
 };
 
 function toLatLng(stop: Location): [number, number] {
@@ -109,6 +111,9 @@ export default function CityMap({
   riskLevel,
   routeStops = [],
   routeInfo,
+  stopConditions = {},
+  selectedStopName,
+  onSelectStop,
 }: CityMapProps) {
   const hasRoute = routeStops.length > 0;
 
@@ -130,17 +135,43 @@ export default function CityMap({
 
       {hasRoute ? (
         <>
+          {/* Manchas de risco primeiro, para a linha da rota ficar por cima.
+              A da parada selecionada fica mais forte que as demais. */}
+          {routeStops.map((stop) => {
+            const conditions = stopConditions[stop.name];
+            if (!conditions) return null;
+            const isSelected = stop.name === selectedStopName;
+            const color = RISK_COLORS[conditions.riskLevel];
+            return (
+              <Circle
+                key={stop.name}
+                center={toLatLng(stop)}
+                radius={RISK_CIRCLE_RADIUS_METERS}
+                pathOptions={{
+                  color,
+                  fillColor: color,
+                  fillOpacity: isSelected ? 0.3 : 0.12,
+                  weight: isSelected ? 3 : 1.5,
+                }}
+                eventHandlers={{ click: () => onSelectStop?.(stop.name) }}
+              />
+            );
+          })}
           {routeStops.length >= 2 &&
             (routeInfo ? (
               // Rota real, seguindo as estradas (OSRM). O contorno branco por
               // baixo ("casing") garante contraste em cima de qualquer fundo
               // do mapa — sem ele, uma linha fina se camufla facilmente.
+              // As `key` diferentes das linhas provisórias obrigam o Leaflet a
+              // criar linhas novas; reaproveitando, o tracejado ficava grudado.
               <>
                 <Polyline
+                  key="road-casing"
                   positions={routeInfo.coordinates}
                   pathOptions={{ color: "#ffffff", weight: 7, opacity: 0.9 }}
                 />
                 <Polyline
+                  key="road-line"
                   positions={routeInfo.coordinates}
                   pathOptions={{ color: "#1e3a8a", weight: 4 }}
                 />
@@ -150,10 +181,12 @@ export default function CityMap({
               // tracejada entre as paradas serve de indicação provisória.
               <>
                 <Polyline
+                  key="straight-casing"
                   positions={routeStops.map(toLatLng)}
                   pathOptions={{ color: "#ffffff", weight: 6, opacity: 0.7 }}
                 />
                 <Polyline
+                  key="straight-line"
                   positions={routeStops.map(toLatLng)}
                   pathOptions={{
                     color: "#1e3a8a",
@@ -164,13 +197,22 @@ export default function CityMap({
                 />
               </>
             ))}
-          {routeStops.map((stop, index) => (
-            <Marker key={`${stop.name}-${index}`} position={toLatLng(stop)} icon={defaultIcon}>
-              <Popup>
-                {index + 1}. {stop.name} - {stop.state}
-              </Popup>
-            </Marker>
-          ))}
+          {routeStops.map((stop, index) => {
+            const conditions = stopConditions[stop.name];
+            return (
+              <Marker
+                key={stop.name}
+                position={toLatLng(stop)}
+                icon={defaultIcon}
+                eventHandlers={{ click: () => onSelectStop?.(stop.name) }}
+              >
+                <Popup>
+                  {index + 1}. {stop.name} - {stop.state}
+                  {conditions && ` — ${Math.round(conditions.temperature)}°C`}
+                </Popup>
+              </Marker>
+            );
+          })}
         </>
       ) : (
         <>

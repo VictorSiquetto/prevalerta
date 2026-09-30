@@ -12,9 +12,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description =
+  "Clima atual, previsão das próximas horas, alertas oficiais do INMET e classificação de risco para cidades e rotas do Estado de São Paulo.";
+
 export const metadata: Metadata = {
-  title: "Clima SP",
-  description: "Condições meteorológicas e riscos do Estado de São Paulo.",
+  metadataBase: new URL("https://prev-alerta.vercel.app"),
+  title: "PreVAlerta",
+  description,
+  applicationName: "PreVAlerta",
+  openGraph: {
+    title: "PreVAlerta",
+    description,
+    url: "/",
+    siteName: "PreVAlerta",
+    locale: "pt_BR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

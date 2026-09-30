@@ -18,6 +18,10 @@ function extractTableValues(html: string): string[] {
   return matches.map((match) => match[1].trim());
 }
 
+function isValidDate(rawDate: string): boolean {
+  return !Number.isNaN(parseAlertDate(rawDate).getTime());
+}
+
 function isExpired(endsAt: string): boolean {
   return parseAlertDate(endsAt).getTime() < Date.now();
 }
@@ -42,6 +46,9 @@ export async function GET(request: Request) {
     const response = await fetch(INMET_FEED_URL, {
       next: { revalidate: 300 },
     });
+    if (!response.ok) {
+      throw new Error(`INMET respondeu com status ${response.status}`);
+    }
     const xml = await response.text();
 
     const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(
@@ -73,7 +80,15 @@ export async function GET(request: Request) {
       };
     });
 
-    const activeAlerts = alerts.filter((alert) => !isExpired(alert.endsAt));
+    // Descarta avisos com datas que não conseguimos ler: além de não dar
+    // para saber se estão em vigor, formatar uma data inválida quebraria a
+    // tela de alertas.
+    const activeAlerts = alerts.filter(
+      (alert) =>
+        isValidDate(alert.startsAt) &&
+        isValidDate(alert.endsAt) &&
+        !isExpired(alert.endsAt)
+    );
 
     const spAlerts = mesoregion
       ? activeAlerts.filter((alert) => alert.areas.includes(mesoregion))
@@ -83,9 +98,11 @@ export async function GET(request: Request) {
           )
         );
 
-    return Response.json({ alerts: spAlerts, mesoregion });
+    return Response.json({ alerts: spAlerts, mesoregion, unavailable: false });
   } catch (error) {
+    // Sinaliza a falha em vez de devolver só uma lista vazia: "não há
+    // alertas" e "não deu para consultar" são coisas bem diferentes.
     console.error("Falha ao buscar avisos do INMET:", error);
-    return Response.json({ alerts: [], mesoregion: null });
+    return Response.json({ alerts: [], mesoregion: null, unavailable: true });
   }
 }

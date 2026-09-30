@@ -1,3 +1,7 @@
+// Limite de paradas por rota: evita pedidos enormes ao servidor público do
+// OSRM, que é compartilhado e tem limites de uso.
+const MAX_POINTS = 25;
+
 function parsePoints(
   raw: string
 ): { latitude: number; longitude: number }[] {
@@ -21,14 +25,18 @@ export async function GET(request: Request) {
   const points = parsePoints(raw);
   const isValid =
     points.length >= 2 &&
+    points.length <= MAX_POINTS &&
     points.every(
       (point) =>
-        Number.isFinite(point.latitude) && Number.isFinite(point.longitude)
+        Number.isFinite(point.latitude) &&
+        Number.isFinite(point.longitude) &&
+        Math.abs(point.latitude) <= 90 &&
+        Math.abs(point.longitude) <= 180
     );
 
   if (!isValid) {
     return Response.json(
-      { error: "São necessários ao menos 2 pontos válidos." },
+      { error: `São necessários de 2 a ${MAX_POINTS} pontos válidos.` },
       { status: 400 }
     );
   }
@@ -45,7 +53,10 @@ export async function GET(request: Request) {
     const response = await fetch(url, { next: { revalidate: 3600 } });
     const data = await response.json();
 
-    if (data.code !== "Ok" || !data.routes?.[0]) {
+    if (
+      data.code !== "Ok" ||
+      !Array.isArray(data.routes?.[0]?.geometry?.coordinates)
+    ) {
       return Response.json(
         { error: "Não foi possível calcular a rota entre esses pontos." },
         { status: 502 }

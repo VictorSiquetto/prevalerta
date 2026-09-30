@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Location } from "@/types/location";
 import type { RouteInfo } from "@/types/route";
+import { formatNumber } from "@/lib/format";
 
 type AddStopResult = { ok: true } | { ok: false; error: string };
 
@@ -70,8 +71,8 @@ export default function RoutePanel({
 
       {stops.length === 0 ? (
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Pesquise uma cidade acima primeiro, depois adicione outras paradas
-          aqui para traçar o trajeto.
+          Adicione as cidades da viagem para traçar o trajeto e ver o clima
+          de cada parada.
         </p>
       ) : (
         <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
@@ -122,7 +123,7 @@ export default function RoutePanel({
           {isRouteLoading
             ? "Calculando rota pelas estradas..."
             : routeInfo
-              ? `~${routeInfo.distanceKm} km, ${formatDuration(routeInfo.durationMin)} de carro (estimativa)`
+              ? `~${formatNumber(routeInfo.distanceKm)} km, ${formatDuration(routeInfo.durationMin)} de carro (estimativa)`
               : "Não foi possível calcular a rota pelas estradas — mostrando linha reta."}
         </p>
       )}
@@ -133,6 +134,8 @@ export default function RoutePanel({
           value={cityName}
           onChange={(event) => setCityName(event.target.value)}
           placeholder="Adicionar parada..."
+          aria-label="Adicionar cidade à rota"
+          enterKeyHint="done"
           className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
         />
         <button
@@ -140,7 +143,10 @@ export default function RoutePanel({
           disabled={isLoading}
           className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
-          {isLoading ? "..." : "+"}
+          <span aria-hidden>{isLoading ? "..." : "+"}</span>
+          <span className="sr-only">
+            {isLoading ? "Adicionando parada" : "Adicionar parada"}
+          </span>
         </button>
       </form>
 

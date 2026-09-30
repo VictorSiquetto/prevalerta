@@ -6,5 +6,6 @@ export type SummaryRequest = {
   location: Location;
   weather: Weather;
   alerts: WeatherAlert[];
+  alertsUnavailable: boolean;
   mesoregion: string | null;
 };
