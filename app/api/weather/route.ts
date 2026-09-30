@@ -1,3 +1,5 @@
+import { EXTERNAL_API_TIMEOUT_MS, isTimeoutError } from "@/lib/http";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   // Converte para número antes de montar a URL: repassar o texto cru
@@ -22,13 +24,16 @@ export async function GET(request: Request) {
   try {
     // Guarda a resposta por 10 minutos: evita bater na Open-Meteo de novo
     // a cada pesquisa da mesma cidade nesse intervalo.
-    const response = await fetch(url, { next: { revalidate: 600 } });
+    const response = await fetch(url, {
+      next: { revalidate: 600 },
+      signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
+    });
     return Response.json(await response.json(), { status: response.status });
   } catch (error) {
     console.error("Falha ao buscar dados da Open-Meteo:", error);
     return Response.json(
       { error: "Serviço meteorológico indisponível." },
-      { status: 502 }
+      { status: isTimeoutError(error) ? 504 : 502 }
     );
   }
 }

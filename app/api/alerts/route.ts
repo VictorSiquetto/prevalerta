@@ -1,5 +1,6 @@
 import { getMesoregion } from "@/services/mesoregion";
 import { parseAlertDate } from "@/lib/formatAlertTime";
+import { EXTERNAL_API_TIMEOUT_MS } from "@/lib/http";
 
 const INMET_FEED_URL = "https://apiprevmet3.inmet.gov.br/avisos/rss";
 
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
     // cidade, então evita rebaixar a rede toda vez que alguém pesquisa.
     const response = await fetch(INMET_FEED_URL, {
       next: { revalidate: 300 },
+      signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
     });
     if (!response.ok) {
       throw new Error(`INMET respondeu com status ${response.status}`);

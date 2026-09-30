@@ -1,4 +1,5 @@
 import type { WeatherAlert } from "@/types/alert";
+import { CLIENT_TIMEOUT_MS } from "@/lib/http";
 
 export type AlertsResult = {
   alerts: WeatherAlert[];
@@ -17,7 +18,8 @@ const UNAVAILABLE: AlertsResult = {
 export async function getAlerts(city: string): Promise<AlertsResult> {
   try {
     const response = await fetch(
-      `/api/alerts?city=${encodeURIComponent(city)}`
+      `/api/alerts?city=${encodeURIComponent(city)}`,
+      { signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) }
     );
     if (!response.ok) return UNAVAILABLE;
 

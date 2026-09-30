@@ -7,6 +7,7 @@ import { getWeather } from "@/services/weather";
 import { getAlerts, type AlertsResult } from "@/services/alerts";
 import { getRoute } from "@/services/routing";
 import { classifyRisk } from "@/lib/riskClassification";
+import { describeFetchError } from "@/lib/http";
 import {
   addToSearchHistory,
   clearSearchHistory,
@@ -15,8 +16,18 @@ import {
 } from "@/lib/searchHistory";
 import type { Location } from "@/types/location";
 import type { Weather } from "@/types/weather";
-import type { CityData, RouteInfo, StopDataState } from "@/types/route";
+import {
+  MAX_ROUTE_STOPS,
+  type CityData,
+  type RouteInfo,
+  type StopDataState,
+} from "@/types/route";
 import type { StopConditions } from "@/components/CityMap";
+import {
+  MAX_ROUTE_SUMMARY_STOPS,
+  type RouteSummaryRequest,
+  type SummaryRequest,
+} from "@/types/summary";
 import WeatherCard from "@/components/WeatherCard";
 import HourlyForecastList from "@/components/HourlyForecastList";
 import AlertsList from "@/components/AlertsList";
@@ -25,6 +36,9 @@ import AiSummary from "@/components/AiSummary";
 import SearchHistory from "@/components/SearchHistory";
 import RoutePanel from "@/components/RoutePanel";
 import RouteStopTabs from "@/components/RouteStopTabs";
+import RouteSummary from "@/components/RouteSummary";
+import ResizablePanel from "@/components/ResizablePanel";
+import MapErrorBoundary from "@/components/MapErrorBoundary";
 
 const CityMap = dynamic(() => import("@/components/CityMap"), {
   ssr: false,
@@ -45,6 +59,16 @@ const NO_ALERTS: AlertsResult = {
 // reposicionar a câmera toda vez que a página atualizasse.
 const NO_STOPS: Location[] = [];
 
+function toSummaryRequest(location: Location, data: CityData): SummaryRequest {
+  return {
+    location,
+    weather: data.weather,
+    alerts: data.alertsResult.alerts,
+    alertsUnavailable: data.alertsResult.unavailable,
+    mesoregion: data.alertsResult.mesoregion,
+  };
+}
+
 async function fetchCityData(found: Location): Promise<CityData> {
   const [weather, alertsResult] = await Promise.all([
     getWeather(found.latitude, found.longitude),
@@ -64,6 +88,10 @@ export default function Home() {
   const [history, setHistory] = useState<Location[]>(() => getSearchHistory());
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [routeStops, setRouteStops] = useState<Location[]>([]);
+  // A rota ativa (mapa, abas e manchas de cada parada) e o painel flutuante
+  // de edição são independentes: fechar o painel só o esconde, a rota
+  // continua na tela. Quem sai da rota é uma busca nova (ou limpar a rota).
+  const [isRouteActive, setIsRouteActive] = useState(false);
   const [isRoutePanelOpen, setIsRoutePanelOpen] = useState(false);
   const [routeResult, setRouteResult] = useState<{
     key: string;
@@ -75,6 +103,10 @@ export default function Home() {
   );
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const isFetchingRef = useRef(false);
+  // Número do último pedido de dados de cada parada: se a mesma cidade for
+  // pedida de novo (removida e readicionada, "Tentar novamente"), só a
+  // resposta mais recente vale — uma antiga que chegue depois é ignorada.
+  const stopRequestIds = useRef<Record<string, number>>({});
   const dragStartY = useRef<number | null>(null);
 
   // Identifica a sequência atual de paradas. A rota calculada guarda a chave
@@ -101,7 +133,13 @@ export default function Home() {
   }, [routeStops, routeKey]);
 
   function handleSheetPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // Captura o ponteiro: o soltar é recebido mesmo que o dedo saia da alça.
+    event.currentTarget.setPointerCapture(event.pointerId);
     dragStartY.current = event.clientY;
+  }
+
+  function handleSheetPointerCancel() {
+    dragStartY.current = null;
   }
 
   function handleSheetPointerUp(event: React.PointerEvent<HTMLDivElement>) {
@@ -138,6 +176,7 @@ export default function Home() {
     setIsHistoryOpen(false);
     // Uma busca nova sai do modo rota para mostrar a cidade pesquisada. A
     // rota continua guardada e volta ao reabrir o painel.
+    setIsRouteActive(false);
     setIsRoutePanelOpen(false);
     try {
       const found = options.known ?? (await searchCity(cityName));
@@ -174,7 +213,10 @@ export default function Home() {
       setWeather(null);
       setAlertsResult(NO_ALERTS);
       setError(
-        "Não foi possível obter os dados meteorológicos. Tente novamente."
+        describeFetchError(
+          caughtError,
+          "Não foi possível obter os dados meteorológicos. Tente novamente."
+        )
       );
     } finally {
       isFetchingRef.current = false;
@@ -196,15 +238,21 @@ export default function Home() {
   }
 
   async function loadStopData(stop: Location) {
+    const requestId = (stopRequestIds.current[stop.name] ?? 0) + 1;
+    stopRequestIds.current[stop.name] = requestId;
+    const isLatest = () => stopRequestIds.current[stop.name] === requestId;
+
     setStopData((prev) => ({ ...prev, [stop.name]: { status: "loading" } }));
     try {
       const data = await fetchCityData(stop);
+      if (!isLatest()) return;
       setStopData((prev) => ({
         ...prev,
         [stop.name]: { status: "ready", data },
       }));
     } catch (caughtError) {
       console.error(`Falha ao buscar dados de ${stop.name}:`, caughtError);
+      if (!isLatest()) return;
       setStopData((prev) => ({ ...prev, [stop.name]: { status: "error" } }));
     }
   }
@@ -212,6 +260,8 @@ export default function Home() {
   function handleToggleRoutePanel() {
     const isOpening = !isRoutePanelOpen;
     setIsRoutePanelOpen(isOpening);
+    // Abrir o painel (re)ativa a rota; fechar não mexe nela.
+    if (isOpening) setIsRouteActive(true);
 
     // Ao abrir pela primeira vez, começa a rota com a cidade já pesquisada,
     // aproveitando os dados que já estão na tela.
@@ -231,6 +281,13 @@ export default function Home() {
   async function handleAddRouteStop(
     cityName: string
   ): Promise<{ ok: true } | { ok: false; error: string }> {
+    if (routeStops.length >= MAX_ROUTE_STOPS) {
+      return {
+        ok: false,
+        error: `A rota aceita até ${MAX_ROUTE_STOPS} paradas.`,
+      };
+    }
+
     let found: Location | null;
     try {
       found = await searchCity(cityName);
@@ -238,7 +295,10 @@ export default function Home() {
       console.error("Falha ao buscar cidade da rota:", caughtError);
       return {
         ok: false,
-        error: "Não foi possível buscar essa cidade agora. Tente novamente.",
+        error: describeFetchError(
+          caughtError,
+          "Não foi possível buscar essa cidade agora. Tente novamente."
+        ),
       };
     }
 
@@ -288,7 +348,12 @@ export default function Home() {
 
   // Modo rota: o painel mostra a parada escolhida nas abas. Fora dele,
   // mostra a cidade pesquisada na busca principal.
-  const isRouteMode = isRoutePanelOpen && routeStops.length > 0;
+  const isRouteMode = isRouteActive && routeStops.length > 0;
+  const routeButtonLabel = isRoutePanelOpen
+    ? "Esconder painel da rota"
+    : isRouteMode
+      ? "Editar rota"
+      : "Planejar rota";
   const selectedStop = isRouteMode
     ? (routeStops.find((stop) => stop.name === selectedStopName) ??
       routeStops[0])
@@ -332,6 +397,39 @@ export default function Home() {
     }
   }
 
+  // Resumo da rota: só com todas as paradas carregadas. A chave muda se as
+  // paradas, a ordem ou os dados mudarem — aí o resumo antigo deixa de valer.
+  const readyStops = routeStops.map((stop) => {
+    const state = stopData[stop.name];
+    return state?.status === "ready" ? state.data : null;
+  });
+  const hasStopError = routeStops.some(
+    (stop) => stopData[stop.name]?.status === "error"
+  );
+  const areAllStopsReady = readyStops.every((data) => data !== null);
+  const hasTooManyStops = routeStops.length > MAX_ROUTE_SUMMARY_STOPS;
+  const routeSummaryData: RouteSummaryRequest | null =
+    routeStops.length >= 2 && areAllStopsReady && !hasTooManyStops
+      ? {
+          stops: routeStops.map((stop, index) =>
+            toSummaryRequest(stop, readyStops[index] as CityData)
+          ),
+        }
+      : null;
+  const routeSummaryHint = hasTooManyStops
+    ? `O resumo da rota aceita até ${MAX_ROUTE_SUMMARY_STOPS} paradas.`
+    : hasStopError
+      ? "Não foi possível carregar os dados de todas as paradas. Tente de novo na aba da cidade com erro."
+      : !areAllStopsReady
+        ? "Carregando os dados das paradas..."
+        : null;
+  const routeSummaryKey = `rota:${routeStops
+    .map(
+      (stop, index) =>
+        `${stop.name}@${readyStops[index]?.weather.hourly[0]?.time ?? ""}`
+    )
+    .join("|")}`;
+
   const stopTabs = selectedStop && (
     <RouteStopTabs
       stops={routeStops}
@@ -364,13 +462,7 @@ export default function Home() {
             />
             <AiSummary
               key={summaryKey}
-              data={{
-                location: shown.location,
-                weather: shown.weather,
-                alerts: shown.alertsResult.alerts,
-                alertsUnavailable: shown.alertsResult.unavailable,
-                mesoregion: shown.alertsResult.mesoregion,
-              }}
+              data={toSummaryRequest(shown.location, shown)}
               summary={summaries[summaryKey] ?? null}
               onSummary={(text) =>
                 setSummaries((prev) => ({ ...prev, [summaryKey]: text }))
@@ -398,19 +490,24 @@ export default function Home() {
   return (
     <div className="relative h-dvh w-screen overflow-hidden bg-zinc-50 dark:bg-black">
       <div className="absolute inset-0 z-0">
-        <CityMap
-          location={location}
-          temperature={weather?.temperature}
-          riskLevel={searchedRisk?.level}
-          routeStops={isRouteMode ? routeStops : NO_STOPS}
-          routeInfo={isRouteMode ? routeInfo : null}
-          stopConditions={stopConditions}
-          selectedStopName={selectedStop?.name ?? null}
-          onSelectStop={setSelectedStopName}
-        />
+        <MapErrorBoundary>
+          <CityMap
+            location={location}
+            temperature={weather?.temperature}
+            riskLevel={searchedRisk?.level}
+            routeStops={isRouteMode ? routeStops : NO_STOPS}
+            routeInfo={isRouteMode ? routeInfo : null}
+            stopConditions={stopConditions}
+            selectedStopName={selectedStop?.name ?? null}
+            onSelectStop={setSelectedStopName}
+          />
+        </MapErrorBoundary>
       </div>
 
-      <div className="absolute top-4 left-4 right-4 z-[1100] mx-auto max-w-md">
+      <div
+        data-map-overlay="top"
+        className="absolute top-4 left-4 right-4 z-[1100] mx-auto max-w-md"
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -440,13 +537,15 @@ export default function Home() {
           <button
             type="button"
             onClick={handleToggleRoutePanel}
-            title={isRoutePanelOpen ? "Fechar rota" : "Planejar rota"}
-            aria-label={isRoutePanelOpen ? "Fechar rota" : "Planejar rota"}
+            title={routeButtonLabel}
+            aria-label={routeButtonLabel}
             aria-pressed={isRoutePanelOpen}
             className={`flex shrink-0 items-center justify-center rounded-lg p-2 transition-colors ${
               isRoutePanelOpen
                 ? "bg-blue-600 text-white hover:bg-blue-500"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                : isRouteMode
+                  ? "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
             }`}
           >
             <svg
@@ -482,42 +581,64 @@ export default function Home() {
             onRemoveStop={handleRemoveRouteStop}
             onMoveStop={handleMoveRouteStop}
             onClear={handleClearRoute}
-          />
+          >
+            {routeStops.length >= 2 && (
+              <RouteSummary
+                key={routeSummaryKey}
+                data={routeSummaryData}
+                hint={routeSummaryHint}
+                summary={summaries[routeSummaryKey] ?? null}
+                onSummary={(text) =>
+                  setSummaries((prev) => ({
+                    ...prev,
+                    [routeSummaryKey]: text,
+                  }))
+                }
+              />
+            )}
+          </RoutePanel>
         )}
       </div>
 
-      {/* Desktop (xl+): painel direito com clima e previsão. No modo rota,
-          as abas ficam fixas no topo e só o conteúdo rola. */}
+      {/* Desktop (xl+): painel direito com clima e previsão, com largura
+          ajustável. No modo rota, as abas ficam fixas no topo e só o
+          conteúdo rola. */}
       {showPanel && (
-        <div className="fixed top-24 right-4 bottom-4 z-[1100] hidden w-80 flex-col overflow-hidden rounded-2xl bg-white/95 shadow-2xl backdrop-blur-sm xl:flex dark:bg-zinc-900/95">
-          {stopTabs && (
-            <div className="shrink-0 border-b border-zinc-200 p-3 dark:border-zinc-800">
-              {stopTabs}
+        <ResizablePanel side="right" className="right-4 z-[1100] hidden xl:block">
+          <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white/95 shadow-2xl backdrop-blur-sm dark:bg-zinc-900/95">
+            {stopTabs && (
+              <div className="shrink-0 border-b border-zinc-200 p-3 dark:border-zinc-800">
+                {stopTabs}
+              </div>
+            )}
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {renderDetails({ includeAlerts: false })}
             </div>
-          )}
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            {renderDetails({ includeAlerts: false })}
           </div>
-        </div>
+        </ResizablePanel>
       )}
 
-      {/* Desktop (xl+): painel esquerdo com alertas, só quando existem */}
+      {/* Desktop (xl+): painel esquerdo com alertas, só quando existem (ou
+          quando não deu para consultá-los), também com largura ajustável */}
       {showDetails &&
         (shown.alertsResult.alerts.length > 0 ||
           shown.alertsResult.unavailable) && (
-        <div className="fixed top-24 left-4 bottom-4 z-[1100] hidden w-80 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm xl:block dark:bg-zinc-900/95">
-          <AlertsList
-            alerts={shown.alertsResult.alerts}
-            mesoregion={shown.alertsResult.mesoregion}
-            cityName={shown.location.name}
-            unavailable={shown.alertsResult.unavailable}
-          />
-        </div>
+        <ResizablePanel side="left" className="left-4 z-[1100] hidden xl:block">
+          <div className="h-full overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm dark:bg-zinc-900/95">
+            <AlertsList
+              alerts={shown.alertsResult.alerts}
+              mesoregion={shown.alertsResult.mesoregion}
+              cityName={shown.location.name}
+              unavailable={shown.alertsResult.unavailable}
+            />
+          </div>
+        </ResizablePanel>
       )}
 
       {/* Celular/tablet (abaixo de xl): gaveta arrastável na parte de baixo */}
       {showPanel && (
         <div
+          data-map-overlay="bottom"
           className={`fixed inset-x-0 bottom-0 z-[1100] flex flex-col overflow-hidden rounded-t-2xl bg-white/95 shadow-2xl backdrop-blur-sm transition-[max-height] duration-300 ease-out xl:hidden dark:bg-zinc-900/95 ${
             isSheetExpanded ? "max-h-[70dvh]" : "max-h-16"
           }`}
@@ -525,6 +646,7 @@ export default function Home() {
           <div
             onPointerDown={handleSheetPointerDown}
             onPointerUp={handleSheetPointerUp}
+            onPointerCancel={handleSheetPointerCancel}
             className="flex shrink-0 touch-none cursor-grab flex-col items-center justify-center gap-1 py-2 active:cursor-grabbing"
           >
             <div className="h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700" />

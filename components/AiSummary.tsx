@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { getSummary } from "@/services/summary";
+import { useSummaryGeneration } from "@/lib/useSummaryGeneration";
 import type { SummaryRequest } from "@/types/summary";
 
 type AiSummaryProps = {
@@ -13,26 +13,10 @@ type AiSummaryProps = {
 // O texto gerado fica guardado na página (por cidade), e não aqui: assim ele
 // não se perde ao trocar de aba entre as paradas da rota e voltar.
 export default function AiSummary({ data, summary, onSummary }: AiSummaryProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const isRequestingRef = useRef(false);
-
-  async function handleGenerate() {
-    if (isRequestingRef.current) return;
-
-    isRequestingRef.current = true;
-    setIsLoading(true);
-    setError(null);
-    try {
-      onSummary(await getSummary(data));
-    } catch (caughtError) {
-      console.error("Falha ao gerar resumo:", caughtError);
-      setError("Não foi possível gerar o resumo agora. Tente novamente.");
-    } finally {
-      isRequestingRef.current = false;
-      setIsLoading(false);
-    }
-  }
+  const { isLoading, error, run } = useSummaryGeneration(
+    () => getSummary(data),
+    onSummary
+  );
 
   return (
     <div className="mt-4 w-full rounded-2xl bg-white p-4 text-left shadow-md dark:bg-zinc-900">
@@ -53,7 +37,7 @@ export default function AiSummary({ data, summary, onSummary }: AiSummaryProps) 
       ) : (
         <button
           type="button"
-          onClick={handleGenerate}
+          onClick={run}
           disabled={isLoading}
           className="mt-2 w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >

@@ -1,6 +1,5 @@
-// Limite de paradas por rota: evita pedidos enormes ao servidor público do
-// OSRM, que é compartilhado e tem limites de uso.
-const MAX_POINTS = 25;
+import { EXTERNAL_API_TIMEOUT_MS, isTimeoutError } from "@/lib/http";
+import { MAX_ROUTE_STOPS } from "@/types/route";
 
 function parsePoints(
   raw: string
@@ -25,7 +24,7 @@ export async function GET(request: Request) {
   const points = parsePoints(raw);
   const isValid =
     points.length >= 2 &&
-    points.length <= MAX_POINTS &&
+    points.length <= MAX_ROUTE_STOPS &&
     points.every(
       (point) =>
         Number.isFinite(point.latitude) &&
@@ -36,7 +35,7 @@ export async function GET(request: Request) {
 
   if (!isValid) {
     return Response.json(
-      { error: `São necessários de 2 a ${MAX_POINTS} pontos válidos.` },
+      { error: `São necessários de 2 a ${MAX_ROUTE_STOPS} pontos válidos.` },
       { status: 400 }
     );
   }
@@ -50,7 +49,10 @@ export async function GET(request: Request) {
   try {
     // Guarda por 1 hora: a mesma rota entre duas cidades não muda de um
     // minuto para o outro, e evita sobrecarregar o servidor público do OSRM.
-    const response = await fetch(url, { next: { revalidate: 3600 } });
+    const response = await fetch(url, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
+    });
     const data = await response.json();
 
     if (
@@ -79,7 +81,7 @@ export async function GET(request: Request) {
     console.error("Falha ao buscar rota no OSRM:", error);
     return Response.json(
       { error: "Serviço de rotas indisponível." },
-      { status: 502 }
+      { status: isTimeoutError(error) ? 504 : 502 }
     );
   }
 }

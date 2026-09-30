@@ -15,6 +15,8 @@ type RoutePanelProps = {
   onRemoveStop: (index: number) => void;
   onMoveStop: (index: number, direction: -1 | 1) => void;
   onClear: () => void;
+  // Conteúdo extra no fim do painel (o resumo da rota com IA).
+  children?: React.ReactNode;
 };
 
 function formatDuration(minutes: number): string {
@@ -32,6 +34,7 @@ export default function RoutePanel({
   onRemoveStop,
   onMoveStop,
   onClear,
+  children,
 }: RoutePanelProps) {
   const [cityName, setCityName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -155,6 +158,8 @@ export default function RoutePanel({
           {error}
         </p>
       )}
+
+      {children}
     </div>
   );
 }

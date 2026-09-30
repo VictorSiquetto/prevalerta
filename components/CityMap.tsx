@@ -6,7 +6,6 @@ import {
   TileLayer,
   Marker,
   Popup,
-  Circle,
   Polyline,
   GeoJSON,
   AttributionControl,
@@ -18,6 +17,8 @@ import "leaflet/dist/leaflet.css";
 import { RISK_COLORS, type RiskLevel } from "@/lib/riskClassification";
 import type { Location } from "@/types/location";
 import type { RouteInfo } from "@/types/route";
+import CityArea from "@/components/CityArea";
+import { getOverlayPadding, ROUTE_MAX_ZOOM } from "@/lib/mapView";
 
 // Ícones servidos pelo próprio app (cópias de leaflet/dist/images em
 // public/leaflet), em vez de depender de uma CDN externa que pode cair.
@@ -33,8 +34,6 @@ const defaultIcon = L.icon({
 
 const SAO_PAULO_STATE_CENTER: [number, number] = [-22.19, -48.79];
 const STATE_ZOOM = 7;
-const CITY_ZOOM = 12;
-const RISK_CIRCLE_RADIUS_METERS = 15000;
 
 export type StopConditions = {
   temperature: number;
@@ -65,16 +64,16 @@ function MapUpdater({
 }) {
   const map = useMap();
 
+  // Uma cidade sozinha (pesquisada ou única parada) é enquadrada pelo
+  // próprio CityArea, que conhece o contorno do município. Aqui ficam só a
+  // rota inteira e a volta para a visão do Estado.
   useEffect(() => {
     if (routeStops.length >= 2) {
-      map.fitBounds(L.latLngBounds(routeStops.map(toLatLng)), {
-        padding: [48, 48],
+      map.flyToBounds(L.latLngBounds(routeStops.map(toLatLng)), {
+        ...getOverlayPadding(map),
+        maxZoom: ROUTE_MAX_ZOOM,
       });
-    } else if (routeStops.length === 1) {
-      map.flyTo(toLatLng(routeStops[0]), CITY_ZOOM);
-    } else if (location) {
-      map.flyTo(toLatLng(location), CITY_ZOOM);
-    } else {
+    } else if (routeStops.length === 0 && !location) {
       map.flyTo(SAO_PAULO_STATE_CENTER, STATE_ZOOM);
     }
   }, [location, routeStops, map]);
@@ -140,20 +139,14 @@ export default function CityMap({
           {routeStops.map((stop) => {
             const conditions = stopConditions[stop.name];
             if (!conditions) return null;
-            const isSelected = stop.name === selectedStopName;
-            const color = RISK_COLORS[conditions.riskLevel];
             return (
-              <Circle
+              <CityArea
                 key={stop.name}
-                center={toLatLng(stop)}
-                radius={RISK_CIRCLE_RADIUS_METERS}
-                pathOptions={{
-                  color,
-                  fillColor: color,
-                  fillOpacity: isSelected ? 0.3 : 0.12,
-                  weight: isSelected ? 3 : 1.5,
-                }}
-                eventHandlers={{ click: () => onSelectStop?.(stop.name) }}
+                location={stop}
+                color={RISK_COLORS[conditions.riskLevel]}
+                emphasis={stop.name === selectedStopName ? "strong" : "soft"}
+                fitView={routeStops.length === 1}
+                onClick={() => onSelectStop?.(stop.name)}
               />
             );
           })}
@@ -217,15 +210,11 @@ export default function CityMap({
       ) : (
         <>
           {location && riskLevel && (
-            <Circle
-              center={toLatLng(location)}
-              radius={RISK_CIRCLE_RADIUS_METERS}
-              pathOptions={{
-                color: RISK_COLORS[riskLevel],
-                fillColor: RISK_COLORS[riskLevel],
-                fillOpacity: 0.2,
-                weight: 2,
-              }}
+            <CityArea
+              key={location.name}
+              location={location}
+              color={RISK_COLORS[riskLevel]}
+              fitView
             />
           )}
           {location && (
