@@ -2,7 +2,7 @@
 
 # PreVAlerta
 
-**Clima, alertas oficiais e risco meteorológico das cidades do Estado de São Paulo, num mapa interativo — para uma cidade ou para uma rota inteira.**
+**Clima, alertas oficiais e risco meteorológico das cidades do Estado de São Paulo, num mapa interativo - para uma cidade ou para uma rota inteira.**
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
@@ -19,9 +19,9 @@
 
 ## Sobre
 
-O PreVAlerta nasceu de um problema real: ao planejar uma viagem de Mogi das Cruzes para o Guarujá, não havia um lugar simples para comparar a situação das duas cidades — uma tinha um alerta leve da Defesa Civil, a outra um bem mais grave. O objetivo do projeto é responder de forma direta: **como está a situação dessa região agora, e nas próximas horas?**
+O PreVAlerta nasceu de um problema real: ao planejar uma viagem de Mogi das Cruzes para o Guarujá, não havia um lugar simples para comparar a situação das duas cidades - uma tinha um alerta leve da Defesa Civil, a outra um bem mais grave. O objetivo do projeto é responder de forma direta: **como está a situação dessa região agora, e nas próximas horas?**
 
-Para isso, o app reúne numa só tela o clima atual, a previsão das próximas 24 horas, os alertas oficiais do INMET e uma classificação de risco calculada a partir dos dados meteorológicos — para uma cidade ou para todas as paradas de uma viagem.
+Para isso, o app reúne numa só tela o clima atual, a previsão das próximas 24 horas, os alertas oficiais do INMET e uma classificação de risco calculada a partir dos dados meteorológicos - para uma cidade ou para todas as paradas de uma viagem.
 
 ## Funcionalidades
 
@@ -88,7 +88,7 @@ O projeto é um app [Next.js](https://nextjs.org/) (App Router) sem servidor sep
 | `GET /api/alerts` | Avisos do INMET filtrados pela mesorregião do município (IBGE) | 5 min |
 | `GET /api/boundary` | Contorno oficial do município (IBGE) | 1 semana |
 | `GET /api/route` | Trajeto, distância e duração entre as paradas (OSRM) | 1 hora |
-| `POST /api/summary` | Resumo com IA de uma cidade ou de uma rota (Gemini) | — |
+| `POST /api/summary` | Resumo com IA de uma cidade ou de uma rota (Gemini) | - |
 
 A busca de cidades (geocoding da Open-Meteo) é feita direto do navegador.
 
@@ -124,7 +124,7 @@ Depois, abra [http://localhost:3000](http://localhost:3000).
 
 ### Resumo com IA (opcional)
 
-As fontes de dados são públicas e não exigem chave, então o app funciona sem nenhuma configuração — com exceção do resumo com IA, que usa a API do Google Gemini (há camada gratuita). Para ativá-lo, gere uma chave no [Google AI Studio](https://aistudio.google.com/apikey) e crie um arquivo `.env.local` na raiz do projeto (ele já é ignorado pelo Git):
+As fontes de dados são públicas e não exigem chave, então o app funciona sem nenhuma configuração - com exceção do resumo com IA, que usa a API do Google Gemini (há camada gratuita). Para ativá-lo, gere uma chave no [Google AI Studio](https://aistudio.google.com/apikey) e crie um arquivo `.env.local` na raiz do projeto (ele já é ignorado pelo Git):
 
 ```env
 GEMINI_API_KEY=sua-chave-aqui
@@ -165,4 +165,4 @@ Distribuído sob a licença [MIT](./LICENSE).
 
 ---
 
-Desenvolvido por [Victor Siquetto](https://github.com/VictorSiquetto).
+Desenvolvido por [Victor Siquetto](https://github.com/VictorSiquetto), Nicolas Oliveira, Arthur Silva e Rafael Bueno.
