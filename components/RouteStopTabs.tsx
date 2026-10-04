@@ -9,9 +9,6 @@ type RouteStopTabsProps = {
   onSelect: (name: string) => void;
 };
 
-// Uma aba por parada da rota: alterna entre as cidades sem empilhar tudo
-// na tela. A temperatura e o ponto colorido (nível de risco) já dão uma
-// visão geral de todas as paradas antes de abrir cada uma.
 export default function RouteStopTabs({
   stops,
   stopData,

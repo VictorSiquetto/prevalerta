@@ -2,8 +2,6 @@ import { EXTERNAL_API_TIMEOUT_MS, isTimeoutError } from "@/lib/http";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  // Converte para número antes de montar a URL: repassar o texto cru
-  // permitiria injetar outros parâmetros na chamada à Open-Meteo.
   const latitude = Number(searchParams.get("latitude") ?? NaN);
   const longitude = Number(searchParams.get("longitude") ?? NaN);
 
@@ -22,8 +20,6 @@ export async function GET(request: Request) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m,weather_code&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day&timezone=America%2FSao_Paulo&forecast_days=2`;
 
   try {
-    // Guarda a resposta por 10 minutos: evita bater na Open-Meteo de novo
-    // a cada pesquisa da mesma cidade nesse intervalo.
     const response = await fetch(url, {
       next: { revalidate: 600 },
       signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),

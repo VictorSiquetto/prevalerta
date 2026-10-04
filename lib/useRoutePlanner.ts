@@ -13,9 +13,6 @@ import type { CityReport } from "@/types/weather";
 
 export type AddStopResult = { ok: true } | { ok: false; error: string };
 
-// Estado e ações da rota: as paradas, o clima e os alertas de cada uma
-// (buscados em segundo plano), a parada aberta nas abas e o trajeto
-// calculado pelas estradas.
 export function useRoutePlanner() {
   const [stops, setStops] = useState<Location[]>([]);
   const [stopData, setStopData] = useState<Record<string, StopDataState>>({});
@@ -24,21 +21,12 @@ export function useRoutePlanner() {
     key: string;
     info: RouteInfo | null;
   } | null>(null);
-  // Número do último pedido de dados de cada parada: se a mesma cidade for
-  // pedida de novo (removida e readicionada, "Tentar novamente"), só a
-  // resposta mais recente vale — uma antiga que chegue depois é ignorada.
   const requestIds = useRef<Record<string, number>>({});
 
-  // Identifica a sequência atual de paradas. A rota calculada guarda a chave
-  // de quando foi pedida: se as paradas mudaram desde então, ela está
-  // desatualizada e não é mostrada (fica a linha reta até a nova chegar).
   const routeKey = stops
     .map((stop) => `${stop.latitude},${stop.longitude}`)
     .join(";");
 
-  // Busca a rota real (seguindo estradas) sempre que as paradas mudam.
-  // `cancelled` evita guardar uma resposta que chegou depois de elas
-  // mudarem de novo.
   useEffect(() => {
     if (stops.length < 2) return;
 
@@ -69,8 +57,6 @@ export function useRoutePlanner() {
     }
   }
 
-  // Começa a rota pela cidade já pesquisada, aproveitando os dados que já
-  // estão na tela.
   function startWith({ location, weather, alertsResult }: CityReport) {
     setStops([location]);
     setSelectedName(location.name);
@@ -94,7 +80,6 @@ export function useRoutePlanner() {
     }
 
     setStops((prev) => [...prev, location]);
-    // Abre direto a aba da cidade recém-adicionada.
     setSelectedName(location.name);
     loadStopData(location);
     return { ok: true };
@@ -123,9 +108,6 @@ export function useRoutePlanner() {
   const currentRoute =
     hasLine && routeResult?.key === routeKey ? routeResult : null;
 
-  // Resumo da rota com IA: só com todas as paradas carregadas. A chave muda
-  // se as paradas, a ordem ou os dados mudarem — aí o resumo antigo deixa
-  // de valer.
   const reports = stops.map((stop): CityReport | null => {
     const state = stopData[stop.name];
     return state?.status === "ready" ? { location: stop, ...state.data } : null;

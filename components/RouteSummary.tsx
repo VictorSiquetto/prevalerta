@@ -5,15 +5,12 @@ import { useSummaryGeneration } from "@/lib/useSummaryGeneration";
 import type { CityReport } from "@/types/weather";
 
 type RouteSummaryProps = {
-  // Paradas na ordem da rota, ou null enquanto não dá para resumir
-  // (paradas carregando, com erro, etc.); nesse caso `hint` explica o motivo.
   stops: CityReport[] | null;
   hint: string | null;
   summary: string | null;
   onSummary: (summary: string) => void;
 };
 
-// Resumo com IA de todas as paradas de uma vez, dentro do painel de rota.
 export default function RouteSummary({
   stops,
   hint,

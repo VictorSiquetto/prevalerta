@@ -2,8 +2,6 @@
 
 import { useEffect } from "react";
 
-// Tela de erro da página: aparece no lugar de uma tela em branco se algo
-// inesperado quebrar a renderização.
 export default function ErrorPage({
   error,
   retry,

@@ -11,8 +11,6 @@ type ResizablePanelProps = {
 const DEFAULT_WIDTH = 360;
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 600;
-// Fração máxima da tela que cada painel pode ocupar: mantém o mapa visível
-// no meio e impede o painel de invadir a barra de busca e a rota.
 const MAX_VIEWPORT_FRACTION = 0.3;
 const KEYBOARD_STEP = 32;
 const DOUBLE_CLICK_MS = 350;
@@ -34,7 +32,6 @@ function saveWidth(side: ResizablePanelProps["side"], width: number) {
   try {
     window.localStorage.setItem(storageKey(side), String(Math.round(width)));
   } catch {
-    // localStorage indisponível — só não lembra a largura
   }
 }
 
@@ -43,9 +40,6 @@ function subscribeToResize(callback: () => void) {
   return () => window.removeEventListener("resize", callback);
 }
 
-// Painel lateral do desktop com a borda interna arrastável. A largura fica
-// entre um mínimo e um máximo (que acompanha o tamanho da janela) e é
-// lembrada no navegador. Duplo clique na borda volta ao tamanho padrão.
 export default function ResizablePanel({
   side,
   className = "",
@@ -76,9 +70,6 @@ export default function ResizablePanel({
   }
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    // Evita selecionar texto e arrastar o mapa enquanto redimensiona. O
-    // duplo clique é detectado aqui mesmo, pelo intervalo entre dois toques,
-    // para funcionar igual com mouse, caneta e tela de toque.
     event.preventDefault();
     if (event.timeStamp - lastPointerDown.current < DOUBLE_CLICK_MS) {
       lastPointerDown.current = 0;
@@ -94,8 +85,6 @@ export default function ResizablePanel({
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
     if (!dragStart.current) return;
     const delta = event.clientX - dragStart.current.x;
-    // No painel da esquerda a borda fica à direita (arrastar para a direita
-    // alarga); no da direita é o contrário.
     setWidth(clamp(dragStart.current.width + (side === "left" ? delta : -delta)));
   }
 

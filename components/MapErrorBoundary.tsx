@@ -2,9 +2,6 @@
 
 import { catchError, type ErrorInfo } from "next/error";
 
-// Isola o mapa: se o Leaflet (ou o carregamento do mapa) falhar, só a área
-// do mapa mostra o aviso — a busca e os painéis de clima continuam
-// funcionando normalmente.
 function MapErrorFallback(_props: object, { error, reset }: ErrorInfo) {
   console.error("Falha ao exibir o mapa:", error);
 

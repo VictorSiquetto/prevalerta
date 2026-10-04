@@ -1,5 +1,4 @@
 export function parseAlertDate(rawDate: string): Date {
-  // "2026-08-20 11:00:00.0" (sempre em UTC) -> "2026-08-20T11:00:00Z"
   const isoString = `${rawDate.replace(" ", "T").replace(/\.\d+$/, "")}Z`;
   return new Date(isoString);
 }

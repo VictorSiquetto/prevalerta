@@ -22,8 +22,6 @@ import type { Location } from "@/types/location";
 import type { RouteInfo, StopDataState } from "@/types/route";
 import type { Weather } from "@/types/weather";
 
-// Ícones servidos pelo próprio app (cópias de leaflet/dist/images em
-// public/leaflet), em vez de depender de uma CDN externa que pode cair.
 const defaultIcon = L.icon({
   iconUrl: "/leaflet/marker-icon.png",
   iconRetinaUrl: "/leaflet/marker-icon-2x.png",
@@ -36,7 +34,6 @@ const defaultIcon = L.icon({
 
 const SAO_PAULO_STATE_CENTER: [number, number] = [-22.19, -48.79];
 const STATE_ZOOM = 7;
-// Contorno do Estado de SP (IBGE), embutido no código do mapa.
 const STATE_BOUNDARY = spBoundary as GeoJsonObject;
 const STATE_BOUNDARY_STYLE = {
   color: "#000000",
@@ -46,10 +43,8 @@ const STATE_BOUNDARY_STYLE = {
 };
 
 type CityMapProps = {
-  // Cidade da busca principal e o clima dela (null enquanto carrega).
   location: Location | null;
   weather: Weather | null;
-  // Paradas da rota (vazio fora do modo rota) e os dados de cada uma.
   routeStops: Location[];
   routeInfo: RouteInfo | null;
   stopData: Record<string, StopDataState>;
@@ -74,9 +69,6 @@ function MapUpdater({
 }) {
   const map = useMap();
 
-  // Uma cidade sozinha (pesquisada ou única parada) é enquadrada pelo
-  // próprio CityArea, que conhece o contorno do município. Aqui ficam só a
-  // rota inteira e a volta para a visão do Estado.
   useEffect(() => {
     if (routeStops.length >= 2) {
       map.flyToBounds(L.latLngBounds(routeStops.map(toLatLng)), {
@@ -111,7 +103,6 @@ export default function CityMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {/* prefix={false} remove só o crédito da biblioteca Leaflet; o aviso do OpenStreetMap continua, pois é obrigatório */}
       <AttributionControl position="bottomright" prefix={false} />
       <GeoJSON
         data={STATE_BOUNDARY}
@@ -122,8 +113,6 @@ export default function CityMap({
 
       {routeStops.length > 0 ? (
         <>
-          {/* Manchas de risco primeiro, para a linha da rota ficar por cima.
-              A da parada selecionada fica mais forte que as demais. */}
           {routeStops.map((stop) => {
             const stopWeather = readyWeather(stopData[stop.name]);
             if (!stopWeather) return null;
@@ -140,11 +129,6 @@ export default function CityMap({
           })}
           {routeStops.length >= 2 &&
             (routeInfo ? (
-              // Rota real, seguindo as estradas (OSRM). O contorno branco por
-              // baixo ("casing") garante contraste em cima de qualquer fundo
-              // do mapa — sem ele, uma linha fina se camufla facilmente.
-              // As `key` diferentes das linhas provisórias obrigam o Leaflet a
-              // criar linhas novas; reaproveitando, o tracejado ficava grudado.
               <>
                 <Polyline
                   key="road-casing"
@@ -158,8 +142,6 @@ export default function CityMap({
                 />
               </>
             ) : (
-              // Enquanto a rota real não chega (ou se falhar), uma linha reta
-              // tracejada entre as paradas serve de indicação provisória.
               <>
                 <Polyline
                   key="straight-casing"

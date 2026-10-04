@@ -12,8 +12,6 @@ export type CityLookup =
   | { ok: true; location: Location }
   | { ok: false; error: string };
 
-// Só aceita resultados com nome e coordenadas válidos: um resultado sem
-// coordenadas levaria o mapa e a busca do clima a falhar mais adiante.
 function toLocation(result: GeocodingResult): Location | null {
   const { name, admin1, latitude, longitude } = result;
   if (
@@ -61,9 +59,6 @@ async function searchCity(city: string): Promise<Location | null> {
   );
 }
 
-// Busca a cidade e confere se ela é do Estado de São Paulo, já com a
-// mensagem de erro pronta para a tela. Usada na busca principal e ao
-// adicionar paradas na rota.
 export async function lookupSaoPauloCity(name: string): Promise<CityLookup> {
   try {
     const location = await searchCity(name);

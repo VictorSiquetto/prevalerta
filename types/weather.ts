@@ -21,12 +21,9 @@ export type Weather = {
   hourly: HourlyForecast[];
 };
 
-// Clima e alertas oficiais de uma cidade.
 export type CityData = {
   weather: Weather;
   alertsResult: AlertsResult;
 };
 
-// Uma cidade com os seus dados: o que o painel mostra e o que vai para o
-// resumo com IA.
 export type CityReport = CityData & { location: Location };

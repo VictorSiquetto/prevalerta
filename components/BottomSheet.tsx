@@ -5,18 +5,13 @@ import { useRef } from "react";
 type BottomSheetProps = {
   isExpanded: boolean;
   onExpandedChange: (isExpanded: boolean) => void;
-  // Texto mostrado na alça quando a gaveta está recolhida.
   collapsedLabel: string | null;
-  // Conteúdo fixo no topo (as abas da rota), fora da área que rola.
   header?: React.ReactNode;
   children: React.ReactNode;
 };
 
-// Arraste mínimo (em px) para contar como gesto; menos que isso é um toque.
 const DRAG_THRESHOLD = 30;
 
-// Gaveta do celular/tablet (abaixo de xl): fica na parte de baixo da tela e
-// abre ou recolhe arrastando a alça ou tocando nela.
 export default function BottomSheet({
   isExpanded,
   onExpandedChange,
@@ -27,7 +22,6 @@ export default function BottomSheet({
   const dragStartY = useRef<number | null>(null);
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    // Captura o ponteiro: o soltar é recebido mesmo que o dedo saia da alça.
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStartY.current = event.clientY;
   }

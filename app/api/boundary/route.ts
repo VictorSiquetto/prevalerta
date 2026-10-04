@@ -1,8 +1,6 @@
 import { getMunicipioId } from "@/services/mesoregion";
 import { EXTERNAL_API_TIMEOUT_MS } from "@/lib/http";
 
-// Confere se a resposta é um GeoJSON com pelo menos um polígono: um
-// contorno vazio ou malformado quebraria o desenho e o enquadramento do mapa.
 type Feature = { geometry?: { type?: unknown; coordinates?: unknown } };
 
 function isBoundaryCollection(data: unknown): boolean {
@@ -42,12 +40,9 @@ export async function GET(request: Request) {
     );
   }
 
-  // Qualidade "intermediaria": contorno fiel o bastante para o mapa e leve
-  // (poucos KB por cidade).
   const url = `https://servicodados.ibge.gov.br/api/v3/malhas/municipios/${id}?formato=application/vnd.geo%2Bjson&qualidade=intermediaria`;
 
   try {
-    // Limites de municípios praticamente não mudam: guarda por 1 semana.
     const response = await fetch(url, {
       next: { revalidate: 604800 },
       signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),

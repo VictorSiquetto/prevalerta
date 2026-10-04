@@ -7,11 +7,8 @@ import {
   parseAlertDate,
 } from "@/lib/formatAlertTime";
 
-// Quanto de cada cidade entra no texto enviado à IA.
 const MAX_ALERTS = 10;
 const MAX_HOURS = 24;
-// Tamanho máximo das listas aceitas na validação (a tela nunca manda mais
-// que isso): impede que um pedido gigante ocupe o servidor.
 const MAX_HOURLY_ITEMS = 48;
 const MAX_ALERT_ITEMS = 50;
 
@@ -100,7 +97,6 @@ export function isSummaryRequest(body: unknown): body is SummaryRequest {
   );
 }
 
-// Remove "<" e ">" para que nenhum texto de fora consiga fechar o bloco <dados>.
 function clean(text: string, maxLength: number): string {
   return text.replace(/[<>]/g, "").slice(0, maxLength);
 }
@@ -121,9 +117,6 @@ function formatHourLine(hour: HourlyForecast): string {
   return `${formatHour(hour)}: ${Math.round(hour.temperature)}°C, chance de chuva ${hour.precipitationProbability}%, ${hour.precipitation} mm`;
 }
 
-// Versão enxuta da previsão para o resumo da rota: uma hora a cada três,
-// mais o pico de chance de chuva e o total previsto — assim um pico entre
-// as horas amostradas não passa despercebido.
 function buildHourlyOverview(hourly: HourlyForecast[]): string {
   const next = hourly.slice(0, MAX_HOURS);
   if (next.length === 0) return "Sem previsão horária.";
@@ -141,8 +134,6 @@ function buildHourlyOverview(hourly: HourlyForecast[]): string {
 Maior chance de chuva nas próximas ${next.length} horas: ${peak.precipitationProbability}% às ${formatHour(peak)}. Chuva total prevista no período: ${Math.round(total * 10) / 10} mm.`;
 }
 
-// Bloco de dados de uma cidade, usado tanto no resumo de uma cidade quanto
-// em cada parada do resumo da rota.
 function buildCityBlock(report: CityReport, hourlyText: string): string {
   const { location, weather, alertsResult } = report;
   const risk = classifyRisk(weather);
@@ -180,7 +171,6 @@ Alertas oficiais do INMET:
 ${alertsText}`;
 }
 
-// Uma cidade usa o prompt do resumo da cidade; duas ou mais, o da rota.
 export function buildSummaryPrompt({ stops }: SummaryRequest): {
   input: string;
   systemInstruction: string;

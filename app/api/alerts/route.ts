@@ -28,8 +28,6 @@ function parseAreas(rawArea: string): string[] {
     .filter(Boolean);
 }
 
-// Transforma um <item> do feed em aviso. As áreas atingidas ficam à parte:
-// só servem para o filtro por região aqui no servidor, não vão para a tela.
 function parseItem(item: string): { alert: WeatherAlert; areas: string[] } {
   const guid = extractTag(item, "guid");
   const values = extractTableValues(
@@ -37,8 +35,6 @@ function parseItem(item: string): { alert: WeatherAlert; areas: string[] } {
   );
   const [, event, severity, startsAt, endsAt, description, rawArea] = values;
 
-  // O guid termina em ".../rss/{id}" — usamos esse id para montar o link da
-  // página visual do aviso (avisos.inmet.gov.br), em vez do XML técnico.
   const alertId = guid.split("/").pop() ?? "";
 
   return {
@@ -55,9 +51,6 @@ function parseItem(item: string): { alert: WeatherAlert; areas: string[] } {
   };
 }
 
-// Aviso ainda válido. Datas que não conseguimos ler são descartadas: além
-// de não dar para saber se o aviso está em vigor, formatar uma data
-// inválida quebraria a tela de alertas.
 function isActive({ startsAt, endsAt }: WeatherAlert): boolean {
   const start = parseAlertDate(startsAt).getTime();
   const end = parseAlertDate(endsAt).getTime();
@@ -71,8 +64,6 @@ export async function GET(request: Request) {
 
     const mesoregion = city ? await getMesoregion(city) : null;
 
-    // Guarda o feed do INMET por 5 minutos: ele é o mesmo para qualquer
-    // cidade, então evita baixá-lo de novo a cada pesquisa.
     const response = await fetch(INMET_FEED_URL, {
       next: { revalidate: 300 },
       signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
@@ -82,8 +73,6 @@ export async function GET(request: Request) {
     }
     const xml = await response.text();
 
-    // Com a mesorregião, filtra os avisos exatos dela; sem ela, fica com
-    // os que citam regiões do Estado (a tela avisa que podem ser genéricos).
     const isInRegion = (areas: string[]) =>
       mesoregion
         ? areas.includes(mesoregion)
@@ -98,8 +87,6 @@ export async function GET(request: Request) {
 
     return Response.json({ alerts, mesoregion, unavailable: false });
   } catch (error) {
-    // Sinaliza a falha em vez de devolver só uma lista vazia: "não há
-    // alertas" e "não deu para consultar" são coisas bem diferentes.
     console.error("Falha ao buscar avisos do INMET:", error);
     return Response.json({ alerts: [], mesoregion: null, unavailable: true });
   }

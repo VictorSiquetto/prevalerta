@@ -7,9 +7,6 @@ function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-// A Open-Meteo às vezes devolve `null` em algum campo (dado indisponível
-// naquela hora). Chuva, probabilidade e vento ausentes viram 0, para não
-// aparecer "null%" na tela nem quebrar o resumo com IA.
 function numberOrZero(value: unknown): number {
   return isNumber(value) ? value : 0;
 }
@@ -43,7 +40,6 @@ async function getWeather(location: Location): Promise<Weather> {
       weatherCode: numberOrZero(hourly.weather_code?.[index]),
       isDay: hourly.is_day?.[index] === 1,
     }))
-    // Sem horário ou temperatura, a hora não tem o que mostrar: fica de fora.
     .filter(
       (hour: { time: unknown; temperature: unknown }) =>
         typeof hour.time === "string" &&
@@ -64,8 +60,6 @@ async function getWeather(location: Location): Promise<Weather> {
   };
 }
 
-// Clima e alertas de uma cidade, buscados ao mesmo tempo. Uma falha nos
-// alertas não impede o clima: ela vem marcada em `alertsResult.unavailable`.
 export async function getCityData(location: Location): Promise<CityData> {
   const [weather, alertsResult] = await Promise.all([
     getWeather(location),

@@ -4,8 +4,6 @@ import { useState } from "react";
 import SearchHistory from "@/components/SearchHistory";
 import type { Location } from "@/types/location";
 
-// Situação da rota, refletida no botão: painel aberto, rota na tela com o
-// painel fechado, ou sem rota.
 export type RouteButtonState = "open" | "active" | "off";
 
 type SearchBarProps = {
@@ -37,7 +35,6 @@ const ROUTE_BUTTON: Record<RouteButtonState, { label: string; style: string }> =
     },
   };
 
-// Campo de busca com o histórico de pesquisas recentes e o botão da rota.
 export default function SearchBar({
   isLoading,
   history,

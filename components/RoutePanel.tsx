@@ -14,7 +14,6 @@ type RoutePanelProps = {
   onRemoveStop: (index: number) => void;
   onMoveStop: (index: number, direction: -1 | 1) => void;
   onClear: () => void;
-  // Conteúdo extra no fim do painel (o resumo da rota com IA).
   children?: React.ReactNode;
 };
 

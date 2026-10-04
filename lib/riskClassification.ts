@@ -6,7 +6,6 @@ export type RiskClassification = {
   level: RiskLevel;
   label: string;
   emoji: string;
-  // Cor da mancha da cidade no mapa e do ponto nas abas da rota.
   color: string;
 };
 

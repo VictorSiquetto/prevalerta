@@ -2,9 +2,6 @@ import { useRef, useState } from "react";
 import { describeFetchError } from "@/lib/http";
 import { SummaryRequestError } from "@/services/summary";
 
-// Estado de um pedido de resumo à IA (carregando/erro), com trava contra
-// cliques repetidos. O texto gerado vai para `onSummary`: quem guarda é a
-// página, para ele não se perder ao trocar de aba ou fechar painéis.
 export function useSummaryGeneration(
   generate: () => Promise<string>,
   onSummary: (summary: string) => void

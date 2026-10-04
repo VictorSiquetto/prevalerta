@@ -7,9 +7,6 @@ type SearchHistoryProps = {
   onClear: () => void;
 };
 
-// onMouseDown + preventDefault evita que o campo de busca perca o foco
-// antes do clique no item ser processado (senão a lista some antes do
-// onClick disparar).
 export default function SearchHistory({
   history,
   onSelect,

@@ -36,31 +36,21 @@ const CityMap = dynamic(() => import("@/components/CityMap"), {
   ),
 });
 
-// Referência fixa para "sem rota": um [] novo a cada render faria o mapa
-// reposicionar a câmera toda vez que a página atualizasse.
 const NO_STOPS: Location[] = [];
 
 export default function Home() {
-  // Cidade da busca principal e os dados dela.
   const [location, setLocation] = useState<Location | null>(null);
   const [cityData, setCityData] = useState<CityData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<Location[]>(() => getSearchHistory());
   const [isSheetExpanded, setIsSheetExpanded] = useState(true);
-  // A rota ativa (mapa, abas e manchas de cada parada) e o painel flutuante
-  // de edição são independentes: fechar o painel só o esconde, a rota
-  // continua na tela. Quem sai da rota é uma busca nova (ou limpar a rota).
   const [isRouteActive, setIsRouteActive] = useState(false);
   const [isRoutePanelOpen, setIsRoutePanelOpen] = useState(false);
-  // Resumos com IA já gerados. A chave inclui o horário dos dados, então um
-  // resumo antigo não aparece para dados novos.
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const isFetchingRef = useRef(false);
   const route = useRoutePlanner();
 
-  // Busca por nome ou, quando vem do histórico, usa a localização já
-  // conhecida e pula direto para o clima.
   async function runSearch(cityName: string, known?: Location) {
     if (isFetchingRef.current || !cityName.trim()) return;
 
@@ -68,12 +58,8 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
     setIsSheetExpanded(true);
-    // Uma busca nova sai do modo rota para mostrar a cidade pesquisada. A
-    // rota continua guardada e volta ao reabrir o painel.
     setIsRouteActive(false);
     setIsRoutePanelOpen(false);
-    // Tira os dados da cidade anterior já no início: assim o mapa não pinta
-    // nem enquadra a mancha antiga enquanto a nova busca carrega.
     setCityData(null);
     try {
       const lookup = known
@@ -111,8 +97,6 @@ export default function Home() {
     setIsRoutePanelOpen(isOpening);
     if (!isOpening) return;
 
-    // Abrir o painel (re)ativa a rota. Na primeira vez, ela começa pela
-    // cidade já pesquisada, aproveitando os dados que já estão na tela.
     setIsRouteActive(true);
     if (route.stops.length === 0 && searched) route.startWith(searched);
   }
@@ -121,8 +105,6 @@ export default function Home() {
     setSummaries((prev) => ({ ...prev, [key]: text }));
   }
 
-  // No modo rota, o painel mostra a parada escolhida nas abas; fora dele, a
-  // cidade da busca principal.
   const isRouteMode = isRouteActive && route.stops.length > 0;
   const selectedStop = isRouteMode ? route.selectedStop : null;
   const selectedState = selectedStop
@@ -254,9 +236,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Desktop (xl+): painel direito com clima e previsão, com largura
-          ajustável. No modo rota, as abas ficam fixas no topo e só o
-          conteúdo rola. */}
       {showPanel && (
         <ResizablePanel side="right" className="right-4 z-[1100] hidden xl:block">
           <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white/95 shadow-2xl backdrop-blur-sm dark:bg-zinc-900/95">
@@ -272,8 +251,6 @@ export default function Home() {
         </ResizablePanel>
       )}
 
-      {/* Desktop (xl+): painel esquerdo com alertas, só quando existem (ou
-          quando não deu para consultá-los), também com largura ajustável */}
       {showAlerts && (
         <ResizablePanel side="left" className="left-4 z-[1100] hidden xl:block">
           <div className="h-full overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm dark:bg-zinc-900/95">
@@ -285,7 +262,6 @@ export default function Home() {
         </ResizablePanel>
       )}
 
-      {/* Celular/tablet (abaixo de xl): gaveta arrastável na parte de baixo */}
       {showPanel && (
         <BottomSheet
           isExpanded={isSheetExpanded}

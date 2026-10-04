@@ -11,20 +11,13 @@ import type { Location } from "@/types/location";
 type CityAreaProps = {
   location: Location;
   color: string;
-  // "strong" destaca a cidade em foco; "soft" é para as demais paradas.
   emphasis?: "strong" | "soft";
-  // Quando true, o mapa enquadra o município inteiro assim que o contorno
-  // chega (ou a região em volta do centro, se não houver contorno).
   fitView?: boolean;
   onClick?: () => void;
 };
 
-// Só usado se o contorno do IBGE não puder ser carregado.
 const FALLBACK_RADIUS_METERS = 8000;
 
-// Mancha na cor do risco cobrindo o território do município, com o
-// contorno oficial do IBGE. Uma borda larga e bem transparente por baixo
-// dá o efeito de brilho suave em volta da cidade.
 export default function CityArea({
   location,
   color,
@@ -48,8 +41,6 @@ export default function CityArea({
     };
   }, [location.name]);
 
-  // Enquadra de novo quando o contorno chega, quando a cidade é pesquisada
-  // outra vez (objeto `location` novo) ou quando passa a ser a cidade em foco.
   useEffect(() => {
     if (!fitView || result?.city !== location.name) return;
 
@@ -57,8 +48,6 @@ export default function CityArea({
     const boundaryBounds = result.boundary
       ? L.geoJSON(result.boundary).getBounds()
       : null;
-    // Um contorno sem pontos daria limites inválidos, e o Leaflet lança erro
-    // ao enquadrá-los: nesse caso usa a região em volta do centro.
     const bounds = boundaryBounds?.isValid()
       ? boundaryBounds
       : center.toBounds(FALLBACK_RADIUS_METERS * 2);
@@ -71,8 +60,6 @@ export default function CityArea({
   const isStrong = emphasis === "strong";
   const eventHandlers = onClick ? { click: onClick } : undefined;
 
-  // Ainda carregando (ou resposta de outra cidade): não desenha nada, para
-  // não piscar um círculo antes do contorno chegar.
   if (result?.city !== location.name) return null;
 
   if (!result.boundary) {
@@ -92,8 +79,6 @@ export default function CityArea({
     );
   }
 
-  // `key` com o nome da cidade: o GeoJSON do react-leaflet não troca os
-  // dados depois de criado, então uma cidade nova precisa de camada nova.
   return (
     <>
       <GeoJSON

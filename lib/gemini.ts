@@ -2,8 +2,6 @@ import { ApiError, GoogleGenAI } from "@google/genai";
 
 const MODEL = "gemini-3.8-flash";
 
-// Gera o resumo com o Gemini e já devolve a resposta HTTP pronta:
-// { summary } ou { error }.
 export async function generateSummaryResponse({
   input,
   systemInstruction,

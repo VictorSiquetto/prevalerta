@@ -10,8 +10,6 @@ type AiSummaryProps = {
   onSummary: (summary: string) => void;
 };
 
-// O texto gerado fica guardado na página (por cidade), e não aqui: assim ele
-// não se perde ao trocar de aba entre as paradas da rota e voltar.
 export default function AiSummary({
   report,
   summary,

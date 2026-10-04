@@ -40,15 +40,12 @@ export async function GET(request: Request) {
     );
   }
 
-  // OSRM espera "longitude,latitude", ao contrário da nossa convenção.
   const coordinates = points
     .map((point) => `${point.longitude},${point.latitude}`)
     .join(";");
   const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
 
   try {
-    // Guarda por 1 hora: a mesma rota entre duas cidades não muda de um
-    // minuto para o outro, e evita sobrecarregar o servidor público do OSRM.
     const response = await fetch(url, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
