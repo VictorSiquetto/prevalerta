@@ -152,8 +152,12 @@ lib/            regras, hooks e utilitários (risco, prompts da IA, enquadrament
 services/       chamadas às rotas de API e aos serviços externos
 types/          tipos TypeScript compartilhados
 data/           contorno do Estado de São Paulo (GeoJSON)
-docs/           capturas de tela usadas neste README
+docs/           capturas de tela usadas neste README e dossiê do projeto
 ```
+
+## Documentação acadêmica
+
+O planejamento do projeto (Product Discovery, prototipação em IHC, Engenharia de Requisitos e Product Backlog) está no [Dossiê de Projeto M1](docs/dossie/Dossie_PreVAlerta.pdf), desenvolvido para a disciplina de Métodos Ágeis e Interação Humano-Computador da Universidade de Mogi das Cruzes. O andamento das Sprints pode ser acompanhado no [quadro do GitHub Projects](https://github.com/users/VictorSiquetto/projects/1).
 
 ## Aviso
 
