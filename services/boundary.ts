@@ -1,7 +1,27 @@
 import type { GeoJsonObject } from "geojson";
 import { CLIENT_TIMEOUT_MS } from "@/lib/http";
 
+type Feature = { geometry?: { type?: unknown; coordinates?: unknown } };
+
 const cache = new Map<string, Promise<GeoJsonObject | null>>();
+
+function isBoundaryCollection(data: unknown): data is GeoJsonObject {
+  if (typeof data !== "object" || data === null) return false;
+  const { type, features } = data as { type?: unknown; features?: unknown };
+  return (
+    type === "FeatureCollection" &&
+    Array.isArray(features) &&
+    features.length > 0 &&
+    features.every((feature: Feature | null) => {
+      const geometry = feature?.geometry;
+      return (
+        (geometry?.type === "Polygon" || geometry?.type === "MultiPolygon") &&
+        Array.isArray(geometry.coordinates) &&
+        geometry.coordinates.length > 0
+      );
+    })
+  );
+}
 
 async function fetchBoundary(city: string): Promise<GeoJsonObject | null> {
   try {
@@ -10,7 +30,9 @@ async function fetchBoundary(city: string): Promise<GeoJsonObject | null> {
       { signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) }
     );
     if (!response.ok) return null;
-    return (await response.json()) as GeoJsonObject;
+
+    const data: unknown = await response.json();
+    return isBoundaryCollection(data) ? data : null;
   } catch (error) {
     console.error("Falha ao buscar contorno da cidade:", error);
     return null;

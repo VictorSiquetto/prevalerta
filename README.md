@@ -80,17 +80,17 @@ A classificação usa apenas os dados meteorológicos do local, com regras simpl
 
 ## Arquitetura
 
-O projeto é um app [Next.js](https://nextjs.org/) (App Router) sem servidor separado: as **rotas de API** do próprio Next fazem a ponte com os serviços externos. Assim, o servidor valida as entradas, padroniza as respostas, guarda os dados em cache e mantém a chave do Gemini fora do navegador.
+O projeto é um app [Next.js](https://nextjs.org/) (App Router) sem servidor separado: as **rotas de API** do próprio Next fazem a ponte com os serviços externos. Assim, o servidor valida as entradas, padroniza as respostas e mantém a chave do Gemini fora do navegador.
 
 | Rota | O que faz | Cache |
 | --- | --- | --- |
-| `GET /api/weather` | Clima atual e previsão (Open-Meteo) | 10 min |
-| `GET /api/alerts` | Avisos do INMET filtrados pela mesorregião do município (IBGE) | 5 min |
-| `GET /api/boundary` | Contorno oficial do município (IBGE) | 1 semana |
+| `GET /api/weather` | Clima atual e previsão (Open-Meteo) | - |
+| `GET /api/alerts` | Avisos do INMET filtrados pela mesorregião do município (IBGE) | - |
+| `GET /api/boundary` | Identifica o município e redireciona o navegador para o contorno oficial na API de malhas do IBGE | 1 semana (no navegador) |
 | `GET /api/route` | Trajeto, distância e duração entre as paradas (OSRM) | 1 hora |
 | `POST /api/summary` | Resumo com IA de uma cidade ou de uma rota (Gemini) | - |
 
-A busca de cidades (geocoding da Open-Meteo) é feita direto do navegador.
+Clima e alertas não usam cache, para nunca mostrar dados antigos. A busca de cidades (geocoding da Open-Meteo) é feita direto do navegador. A lista de municípios e mesorregiões do IBGE fica em `data/sp-municipios.json`: ela dá o nome oficial da cidade na busca, e só o contorno depende da API do IBGE em tempo real.
 
 **Robustez e segurança**
 
@@ -98,6 +98,7 @@ A busca de cidades (geocoding da Open-Meteo) é feita direto do navegador.
 - Mapa isolado: se ele falhar, os painéis de clima continuam funcionando.
 - Validação dos parâmetros recebidos pelas rotas de API.
 - Limite de pedidos por visitante no resumo com IA, para proteger a cota da chave.
+- Se o modelo principal do Gemini estiver sem cota ou sobrecarregado, o resumo é gerado por um modelo alternativo.
 - Cabeçalhos de segurança HTTP, incluindo proteção contra clickjacking.
 
 ## Tecnologias
@@ -151,7 +152,7 @@ components/     componentes da interface (mapa, painéis, abas, gaveta...)
 lib/            regras, hooks e utilitários (risco, prompts da IA, enquadramento do mapa...)
 services/       chamadas às rotas de API e aos serviços externos
 types/          tipos TypeScript compartilhados
-data/           contorno do Estado de São Paulo (GeoJSON)
+data/           contorno do Estado de São Paulo (GeoJSON) e lista de municípios paulistas (IBGE)
 docs/           capturas de tela usadas neste README e dossiê do projeto
 ```
 

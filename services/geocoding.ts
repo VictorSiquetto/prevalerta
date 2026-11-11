@@ -1,5 +1,6 @@
 import type { Location } from "@/types/location";
 import { CLIENT_TIMEOUT_MS, describeFetchError } from "@/lib/http";
+import { getOfficialName } from "@/services/mesoregion";
 
 type GeocodingResult = {
   name?: unknown;
@@ -34,7 +35,7 @@ function toLocation(result: GeocodingResult): Location | null {
 async function searchCity(city: string): Promise<Location | null> {
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
     city
-  )}&count=5&language=pt&format=json`;
+  )}&count=10&language=pt&format=json&countryCode=BR`;
 
   const response = await fetch(url, {
     signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
@@ -52,11 +53,22 @@ async function searchCity(city: string): Promise<Location | null> {
     .map(toLocation)
     .filter((location): location is Location => location !== null);
 
-  return (
-    locations.find((location) => location.state === "São Paulo") ??
-    locations[0] ??
-    null
+  const isInSaoPaulo = (location: Location) => location.state === "São Paulo";
+  const sameName = locations.filter(
+    (location) =>
+      location.name.localeCompare(city.trim(), "pt-BR", {
+        sensitivity: "base",
+      }) === 0
   );
+  const match =
+    sameName.find(isInSaoPaulo) ??
+    sameName[0] ??
+    locations.find(isInSaoPaulo) ??
+    locations[0];
+  if (!match || !isInSaoPaulo(match)) return match ?? null;
+
+  const officialName = getOfficialName(city);
+  return officialName ? { ...match, name: officialName } : match;
 }
 
 export async function lookupSaoPauloCity(name: string): Promise<CityLookup> {

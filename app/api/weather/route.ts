@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   try {
     const response = await fetch(url, {
-      next: { revalidate: 600 },
+      cache: "no-store",
       signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
     });
     return Response.json(await response.json(), { status: response.status });

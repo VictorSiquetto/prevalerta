@@ -8,7 +8,7 @@ function messageForStatus(status: number): string {
     return "Muitos pedidos de resumo no momento. Aguarde um minuto e tente de novo.";
   }
   if (status === 503) {
-    return "O resumo com IA não está disponível no momento.";
+    return "O resumo com IA está indisponível no momento. Tente novamente mais tarde.";
   }
   if (status === 504) {
     return "A IA demorou demais para responder. Tente novamente.";

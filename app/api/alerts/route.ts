@@ -62,10 +62,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get("city");
 
-    const mesoregion = city ? await getMesoregion(city) : null;
+    const mesoregion = city ? getMesoregion(city) : null;
 
     const response = await fetch(INMET_FEED_URL, {
-      next: { revalidate: 300 },
+      cache: "no-store",
       signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS),
     });
     if (!response.ok) {
